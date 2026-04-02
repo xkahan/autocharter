@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeonBeat AI - Auto Charting Rhythm Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <canvas id="visualizer-canvas"></canvas>
+    <div class="app-container">
+        <!-- Left Panel: Uploader & Settings -->
+        <div class="panel left-panel glass-panel">
+            <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <h1>NeonBeat <span>AI</span></h1>
+                    <p>Auto-generador de mapas de ritmo</p>
+                </div>
+                
+                <!-- Biblioteca Dropdown Menu -->
+                <div class="library-dropdown">
+                    <button id="btn-library" class="btn-library">🎵 Librería <span id="library-count">(0)</span></button>
+                    <div id="library-content" class="library-content hidden">
+                        <div class="library-empty">Aún no has generado canciones</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="settings-section">
+                <!-- Dropzone -->
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-content">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                        <p>Arrastra tu <strong>MP3</strong> aquí</p>
+                        <span class="subtext">o haz clic para explorar</span>
+                    </div>
+                    <input type="file" id="file-input" accept="audio/mp3, audio/wav, audio/mpeg" hidden>
+                </div>
+                
+                <div id="file-info" class="hidden">
+                    <p class="file-name" id="file-name-display"></p>
+                </div>
+
+                <!-- Selección de Dificultad -->
+                <div class="control-group mt-4">
+                    <label>Dificultad del Mapa:</label>
+                    <div class="mode-selector">
+                        <button class="mode-btn" data-diff="facil">Fácil</button>
+                        <button class="mode-btn active" data-diff="normal">Normal</button>
+                        <button class="mode-btn" data-diff="dificil">Difícil</button>
+                        <button class="mode-btn" data-diff="inhumano">Inhumano</button>
+                    </div>
+                </div>
+
+                <!-- Dificultad / Multiplicador visual -->
+                <div class="control-group">
+                    <label for="speed-range">Velocidad de Caída: <span id="speed-val">1.5x</span></label>
+                    <input type="range" id="speed-range" min="1" max="3" step="0.1" value="1.5">
+                </div>
+
+                <!-- Ajustes Visuales -->
+                <div class="visual-settings mt-4" style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 15px;">🎨 Ajustes Visuales</h3>
+                    
+                    <div class="control-group">
+                        <label>Forma de Nota:</label>
+                        <select id="shape-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <option value="circle">Círculos</option>
+                            <option value="diamond">Diamantes</option>
+                            <option value="arrow">Flechas</option>
+                            <option value="bar">Barras</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Efecto Splash:</label>
+                        <select id="splash-select" style="width: 100%; padding: 8px; background: rgba(0,0,0,0.5); color: #fff; border: 1px solid var(--border-color); border-radius: 6px;">
+                            <option value="rings">Anillos Expansivos</option>
+                            <option value="sparks">Chispas Neón</option>
+                            <option value="stars">Estrellas Pop</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Tamaño de Nota: <span id="size-val">25px</span></label>
+                        <input type="range" id="size-range" min="10" max="45" step="1" value="25">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Dirección de Scroll:</label>
+                        <div class="mode-selector" id="scroll-selector">
+                            <button class="mode-btn active" data-dir="down">Downscroll</button>
+                            <button class="mode-btn" data-dir="up">Upscroll</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between;">
+                        <label style="margin-bottom: 0;">Barras de Fondo:</label>
+                        <input type="checkbox" id="visualizer-toggle" checked style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px;">
+                        <span style="font-size: 0.85rem; font-weight: 600;">Auto-Play (Playtest Mod)</span>
+                        <input type="checkbox" id="autoplay-toggle" style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--success);">
+                    </div>
+
+                    <!-- Vista Previa -->
+                    <div class="preview-box" style="margin-top: 15px; border-radius: 8px; background: rgba(0,0,0,0.4); text-align: center; overflow: hidden; height: 80px; position: relative;">
+                        <canvas id="preview-canvas" width="200" height="80" style="display: block; margin: 0 auto;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Controles Principales -->
+                <div class="action-buttons">
+                    <button id="btn-process" class="btn-primary" disabled>Generar Mapa</button>
+                    <button id="btn-play" class="btn-success hidden">¡Jugar!</button>
+                    <button id="btn-pause" class="btn-primary hidden" style="margin-top: 5px;">⏸ Pausa / Reanudar (P)</button>
+                </div>
+                
+                <div id="status-text" class="status-text"></div>
+            </div>
+
+            <div class="controls-hint">
+                <h3>Controles de Juego</h3>
+                <div class="keys-display">
+                    <span class="key">D</span>
+                    <span class="key">F</span>
+                    <span class="key">J</span>
+                    <span class="key">K</span>
+                </div>
+                <p>O usa las Flechas Direccionales</p>
+            </div>
+        </div>
+
+        <!-- Right Panel: Rhythm Game Canvas -->
+        <div class="panel right-panel">
+            <!-- Barra de Vida -->
+            <div class="health-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 8px; background: rgba(255,0,0,0.3); z-index: 20;">
+                <div id="health-bar" style="height: 100%; width: 50%; background: var(--success); transition: width 0.2s, background-color 0.2s; box-shadow: 0 0 10px var(--success);"></div>
+            </div>
+
+            <!-- Puntuación flotante -->
+            <div class="hud">
+                <div class="score-box">Puntuación: <span id="score-display">0</span></div>
+                <div class="combo-box">Combo: <span id="combo-display">0</span>x</div>
+            </div>
+            
+            <div id="game-container">
+                <canvas id="game-canvas"></canvas>
+                <!-- Mensajes visuales de acierto (Perfect, Good, Miss) -->
+                <div id="hit-feedback" class="feedback-text"></div>
+
+                <!-- Pantalla de Resultados (Overlay) -->
+                <div id="results-screen" class="results-overlay hidden">
+                    <div class="results-content glass-panel">
+                        <h2 class="results-title">RESULTADOS</h2>
+                        <div class="results-main">
+                            <div id="result-rank" class="result-rank">S</div>
+                            <div class="results-stats">
+                                <div class="stat-row"><span class="stat-label">PERFECT</span><span id="res-perfect" class="stat-value color-perfect">0</span></div>
+                                <div class="stat-row"><span class="stat-label">GREAT</span><span id="res-great" class="stat-value color-great">0</span></div>
+                                <div class="stat-row"><span class="stat-label">OK</span><span id="res-ok" class="stat-value color-ok">0</span></div>
+                                <div class="stat-row"><span class="stat-label">MISS</span><span id="res-miss" class="stat-value color-miss">0</span></div>
+                            </div>
+                        </div>
+                        <div class="results-footer">
+                            <div class="footer-item">
+                                <span class="footer-label">COMBO MÁXIMO</span>
+                                <span id="res-max-combo" class="footer-value">0</span>
+                            </div>
+                            <div class="footer-item">
+                                <span class="footer-label">PUNTUACIÓN TOTAL</span>
+                                <span id="res-score" class="footer-value">0</span>
+                            </div>
+                        </div>
+                        <div class="results-actions">
+                            <button id="btn-results-retry" class="btn-success">REINTENTAR</button>
+                            <button id="btn-results-close" class="btn-primary">CONTINUAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="audioAnalyzer.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
