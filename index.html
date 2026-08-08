@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, shrink-to-fit=no">
+    <title>Auto Charter - Auto Charting Rhythm Game</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsmediatags/3.9.5/jsmediatags.min.js"></script>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+    <div id="red-bg-overlay"></div>
+    <div id="theme-bg-overlay"></div>
+    <div id="black-flash-overlay" class="black-flash-overlay"></div>
+    <div id="import-success-banner" class="import-success-banner">🎵 SE HA IMPORTADO TU CANCIÓN CON ÉXITO</div>
+    <div id="recreative-figures" class="hidden">
+        <div id="rec-fig-0" class="rec-fig rec-hexagon"></div>
+        <div id="rec-fig-1" class="rec-fig rec-square"></div>
+        <div id="rec-fig-2" class="rec-fig rec-circle"></div>
+        <div id="rec-fig-3" class="rec-fig rec-triangle"></div>
+    </div>
+    <!-- Sidebar Toggle Buttons -->
+    <button id="btn-toggle-panel" class="btn-toggle-panel" title="Configuración">⚙️</button>
+    <button id="btn-custom-window" class="btn-custom-window" title="Ventana">⚠️</button>
+    <button id="btn-theme-menu" class="btn-theme-menu" title="Cambiar Temática">🎨</button>
+    <canvas id="theme-canvas"></canvas>
+    <canvas id="visualizer-canvas"></canvas>
+
+    <!-- NEW SCREEN SYSTEM FOR AUTO CHARTER -->
+    
+    <!-- 1. PANTALLA PRINCIPAL (MAIN MENU) -->
+    <div id="main-menu-screen" class="menu-screen">
+        <div class="menu-window-wrapper">
+            <div class="menu-window">
+                <img src="assets/logo.png" class="main-menu-logo" alt="Auto Charter Logo">
+                <div class="main-menu-content">
+                    <!-- Left: Navigation Options -->
+                    <div class="main-menu-left">
+                        <button class="menu-nav-btn" onclick="if (window.localMode) window.localMode.active = false; showScreen('game')">Auto Charting</button>
+                        <button class="menu-nav-btn" onclick="openCustomMaps()">Custom Maps</button>
+                        <button class="menu-nav-btn" onclick="showScreen('online-lobby'); if (window.switchLobbyTab) window.switchLobbyTab('online');">Online Playing</button>
+                        <button class="menu-nav-btn" onclick="showScreen('settings')">Settings</button>
+                    </div>
+                    <!-- Right: Profile Info Card -->
+                    <div class="main-menu-right" id="menu-profile-card">
+                        <div class="profile-pic-container">
+                            <img id="menu-profile-pic" src="" alt="Avatar" class="profile-pic hidden">
+                            <span id="menu-profile-pic-fallback" class="profile-pic-fallback">🎮</span>
+                        </div>
+                        <div class="profile-info">
+                            <span id="menu-profile-name" class="profile-name">Cargando...</span>
+                            <span class="profile-edit-hint">Click para editar nombre y foto</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. PANTALLA DE AJUSTES (SETTINGS) -->
+    <div id="settings-screen" class="menu-screen hidden">
+        <div class="menu-window-wrapper">
+            <div class="menu-window settings-window">
+                <div class="settings-header">
+                    <button class="btn-settings-back" onclick="showScreen('main-menu')">Regresar</button>
+                    <div class="settings-tabs">
+                        <button class="settings-tab-btn active" data-tab="sound">Sound</button>
+                        <button class="settings-tab-btn" data-tab="themes">Themes</button>
+                        <button class="settings-tab-btn" data-tab="online">Online</button>
+                    </div>
+                </div>
+                <div class="settings-body">
+                    <!-- Sound Tab Content -->
+                    <div class="settings-tab-content active" id="tab-sound">
+                        <div class="setting-slider-group">
+                            <label for="settings-vol-music">Música:</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="settings-vol-music" min="0" max="1" step="0.01" value="1">
+                                <span id="settings-vol-music-val">100%</span>
+                            </div>
+                        </div>
+                        <div class="setting-slider-group">
+                            <label for="settings-vol-sfx">SFX:</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="settings-vol-sfx" min="0" max="1" step="0.01" value="0.4">
+                                <span id="settings-vol-sfx-val">40%</span>
+                            </div>
+                        </div>
+                        <div class="setting-slider-group">
+                            <label for="settings-vol-extras">Extras:</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="settings-vol-extras" min="0" max="1" step="0.01" value="0.5">
+                                <span id="settings-vol-extras-val">50%</span>
+                            </div>
+                        </div>
+                        <div class="setting-slider-group" style="margin-top: 15px;">
+                            <label for="settings-touch-opacity">📱 Transparencia Controles Táctiles:</label>
+                            <div class="slider-wrapper">
+                                <input type="range" id="settings-touch-opacity" min="0" max="100" step="5" value="30">
+                                <span id="settings-touch-opacity-val">30%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Themes Tab Content -->
+                    <div class="settings-tab-content hidden" id="tab-themes">
+                        <div class="settings-themes-grid" id="settings-themes-list">
+                            <!-- Populated dynamically via JS or click-redirected -->
+                            <div class="settings-theme-card active" data-theme="default">
+                                <h4>Neon Night (Default)</h4>
+                                <p>El estilo neón clásico de NeonBeat.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="heaven">
+                                <h4>Heavenly Blue</h4>
+                                <p>Vuelo infinito en cielos celestes.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="cyberpunk">
+                                <h4>Shifting Sand</h4>
+                                <p>Dunas doradas y ritmo desértico.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="sunflower">
+                                <h4>Golden Field</h4>
+                                <p>Campos de girasoles a alta velocidad en un atardecer.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="recreative">
+                                <h4>Recreative Space</h4>
+                                <p>Un vacío oscuro que reacciona a los sonidos.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="city">
+                                <h4>City Night</h4>
+                                <p>Noche de ciudad con luces de neón y rascacielos.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="galaxy">
+                                <h4>Galaxy Voyage</h4>
+                                <p>Viaje frontal lento entre astros y ruinas espaciales.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="forest">
+                                <h4>Snowy Forest</h4>
+                                <p>Bosque nevado con parallax de 7 capas bajo estrellas.</p>
+                            </div>
+                            <div class="settings-theme-card" data-theme="glass">
+                                <h4>Stained Glass</h4>
+                                <p>Mosaicos de vidrio de colores en movimiento diagonal.</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Online Tab Content -->
+                    <div class="settings-tab-content hidden" id="tab-online">
+                        <div class="setting-checkbox-group">
+                            <label class="glass-checkbox">
+                                <input type="checkbox" id="settings-hide-names">
+                                <span>OCULTAR NOMBRE DE JUGADORES</span>
+                            </label>
+                        </div>
+                        <div class="setting-checkbox-group">
+                            <label class="glass-checkbox">
+                                <input type="checkbox" id="settings-hide-avatars">
+                                <span>OCULTAR FOTO DE PERFIL DE JUGADORES</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. PANTALLA DEL LOBBY MULTIJUGADOR (ONLINE LOBBY) -->
+    <div id="online-lobby-screen" class="menu-screen hidden">
+        <div class="menu-window-wrapper">
+            <div class="menu-window lobby-window">
+                <div class="lobby-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 20px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button class="btn-lobby-back" onclick="showScreen('main-menu')">regresar</button>
+                        <h1 class="lobby-title" id="lobby-panel-title" style="margin: 0; font-size: 1.8rem; font-weight: 900; text-transform: uppercase; letter-spacing: 2px;">Online</h1>
+                    </div>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <button id="btn-refresh-lobby" class="btn-primary" style="padding: 6px 12px; font-size: 0.9rem; border-radius: 8px;" title="Refrescar lista de salas" onclick="if(window.refreshRoomsLobby) window.refreshRoomsLobby();">🔄 Refrescar</button>
+                        <button id="tab-lobby-online" class="lobby-tab-btn active" onclick="switchLobbyTab('online')">Online</button>
+                        <button id="tab-lobby-local" class="lobby-tab-btn" onclick="switchLobbyTab('local')">Jugar Local</button>
+                    </div>
+                </div>
+                <div class="lobby-body">
+                    <!-- ONLINE PANEL -->
+                    <div id="lobby-online-panel" style="display: flex; width: 100%; gap: 20px;">
+                        <!-- Left: Rooms List -->
+                        <div class="lobby-left">
+                            <div class="lobby-rooms-container" id="lobby-rooms-list">
+                                <div class="lobby-room-loading">Buscando salas activas...</div>
+                            </div>
+                        </div>
+                        <!-- Right: Join or Create Room -->
+                        <div class="lobby-right">
+                            <div class="lobby-join-box">
+                                <label for="lobby-join-code-input">Insertar Código</label>
+                                <div class="lobby-join-row">
+                                    <input type="text" id="lobby-join-code-input" class="glass-input" placeholder="Código" maxlength="5">
+                                    <button id="btn-lobby-join" class="btn-success">Unirse</button>
+                                </div>
+                            </div>
+                            <div class="lobby-create-type-row" style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between; background: rgba(0,0,0,0.25); padding: 12px 20px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.05); user-select: none;">
+                                <span style="font-size: 0.95rem; font-weight: 700; color: var(--text-main);">Sala Pública (en lista)</span>
+                                <input type="checkbox" id="lobby-public-checkbox" checked style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                            </div>
+                            <button id="btn-lobby-create" class="btn-lobby-create" style="margin-top: 15px;">Crear sala</button>
+                        </div>
+                    </div>
+
+                    <!-- LOCAL COOP PANEL -->
+                    <div id="lobby-local-panel" class="hidden" style="width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 10px 40px; box-sizing: border-box;">
+                        <div style="display: flex; gap: 40px; width: 100%; justify-content: center; align-items: center;">
+                            <!-- Player 1 Customizer -->
+                            <div class="local-keybind-card" style="flex: 1; max-width: 320px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+                                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 15px; color: var(--primary);">Teclas P1</h3>
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    <button class="btn-local-key" data-player="1" data-col="0" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">D</button>
+                                    <button class="btn-local-key" data-player="1" data-col="1" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">F</button>
+                                    <button class="btn-local-key" data-player="1" data-col="2" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">J</button>
+                                    <button class="btn-local-key" data-player="1" data-col="3" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">K</button>
+                                </div>
+                            </div>
+                            <!-- Player 2 Customizer -->
+                            <div class="local-keybind-card" style="flex: 1; max-width: 320px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,0.2);">
+                                <h3 style="font-size: 1.25rem; font-weight: 700; margin-bottom: 15px; color: var(--primary);">Teclas P2</h3>
+                                <div style="display: flex; gap: 8px; justify-content: center;">
+                                    <button class="btn-local-key" data-player="2" data-col="0" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">E</button>
+                                    <button class="btn-local-key" data-player="2" data-col="1" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">R</button>
+                                    <button class="btn-local-key" data-player="2" data-col="2" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">U</button>
+                                    <button class="btn-local-key" data-player="2" data-col="3" style="width: 50px; height: 50px; border-radius: 8px; border: 2px dashed rgba(255,255,255,0.3); background: rgba(0,0,0,0.3); color: white; font-weight: bold; font-size: 1.2rem; cursor: pointer; transition: all 0.2s;">I</button>
+                                </div>
+                            </div>
+                        </div>
+                        <button id="btn-local-start" class="btn-lobby-create" style="margin-top: 10px; max-width: 260px;">Comenzar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. MODAL PARA EDITAR NOMBRE Y FOTO -->
+    <div id="profile-edit-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-panel">
+            <h2>Editar Perfil</h2>
+            <div class="modal-body">
+                <div class="profile-edit-name-group">
+                    <label for="profile-edit-name-input">Nombre de usuario</label>
+                    <input type="text" id="profile-edit-name-input" class="glass-input" placeholder="Tu apodo" maxlength="15">
+                </div>
+                
+                <div class="profile-edit-avatar-group">
+                    <label>Selecciona un avatar</label>
+                    <div class="avatar-presets">
+                        <span class="avatar-preset-btn" data-emoji="🎮">🎮</span>
+                        <span class="avatar-preset-btn" data-emoji="⚡">⚡</span>
+                        <span class="avatar-preset-btn" data-emoji="🎧">🎧</span>
+                        <span class="avatar-preset-btn" data-emoji="🔥">🔥</span>
+                        <span class="avatar-preset-btn" data-emoji="🌀">🌀</span>
+                        <span class="avatar-preset-btn" data-emoji="❄️">❄️</span>
+                        <span class="avatar-preset-btn" data-emoji="🌟">🌟</span>
+                        <span class="avatar-preset-btn" data-emoji="🐱">🐱</span>
+                    </div>
+                    
+                    <div class="avatar-upload-group">
+                        <label for="avatar-file-input" class="btn-primary" style="display:inline-block; padding:8px 12px; border-radius:8px; cursor:pointer; text-align:center;">📁 Subir imagen</label>
+                        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
+                        <span id="avatar-file-name" style="font-size:0.85rem; color:var(--text-muted); margin-left:10px;">Ningún archivo seleccionado</span>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button id="btn-profile-save" class="btn-success">Guardar</button>
+                <button id="btn-profile-cancel" class="btn-primary">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="app-container hidden">
+        <!-- Left Panel: Uploader & Settings -->
+        <div class="panel left-panel glass-panel">
+            <header style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div>
+                    <img src="assets/logo.png" class="game-sidebar-logo" alt="Auto Charter Logo">
+                    <p>Auto-generador de mapas de ritmo</p>
+                </div>
+
+                <!-- Biblioteca & Editor Dropdown Menu -->
+                <div class="library-dropdown" style="display: flex; gap: 8px; align-items: center;">
+                    <button id="btn-back-to-menu" class="btn-primary btn-back-to-menu" onclick="showScreen('main-menu')" style="font-weight: bold; background: rgba(0,0,0,0.4); border: 1.5px solid rgba(255, 255, 255, 0.2); border-radius: 8px; padding: 6px 12px; cursor: pointer; color: white; display: flex; align-items: center; gap: 4px;">↩ Menú</button>
+                    <button id="btn-library" class="btn-library">🎵 Librería <span
+                            id="library-count">(0)</span></button>
+                    <div id="library-content" class="library-content hidden">
+                        <div class="library-empty">Aún no has generado canciones</div>
+                    </div>
+                </div>
+            </header>
+
+            <div class="settings-section">
+                <!-- Dropzone -->
+                <div class="dropzone" id="dropzone">
+                    <div class="dropzone-content">
+                        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <p>Arrastra tu <strong>MP3</strong> aquí</p>
+                        <span class="subtext">o haz clic para explorar</span>
+                    </div>
+                    <input type="file" id="file-input" accept="audio/mp3, audio/wav, audio/mpeg" hidden>
+                </div>
+
+                <div id="file-info" class="hidden" style="margin-top: 15px; text-align: center;">
+                    <p id="upload-success-label" style="font-weight: 400; color: #a3e635; font-size: 1.1rem; letter-spacing: 0.5px;"></p>
+                </div>
+
+                <!-- Selección de Dificultad -->
+                <div class="control-group mt-4">
+                    <label>Dificultad del Mapa:</label>
+                    <div class="mode-selector">
+                        <button class="mode-btn" data-diff="facil">Normal</button>
+                        <button class="mode-btn active" data-diff="normal">Difícil</button>
+                        <button class="mode-btn" data-diff="dificil">Insane</button>
+                        <button class="mode-btn" data-diff="inhumano">Hardcore</button>
+                    </div>
+                </div>
+
+                <!-- Contenedor Speed Range eliminado (movido a Ajustes Visuales) -->
+
+                <!-- BPM Manual (Opcional) -->
+                <div class="control-group bpm-override-group">
+                    <label for="bpm-input">BPM de la Canción <span class="bpm-optional-tag">(opcional)</span></label>
+                    <div class="bpm-input-wrapper">
+                        <div class="bpm-input-container">
+                            <svg class="bpm-icon" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10" />
+                                <polyline points="12 6 12 12 16 14" />
+                            </svg>
+                            <input type="number" id="bpm-input" class="bpm-input" placeholder="Ej: 128" min="40"
+                                max="300" step="0.5">
+                            <span class="bpm-suffix">BPM</span>
+                        </div>
+                        <p class="bpm-hint">Déjalo vacío para detección automática. Usa <a
+                                href="https://vocalremover.org/es/key-bpm-finder" target="_blank"
+                                rel="noopener">vocalremover.org</a> para encontrar el BPM exacto.</p>
+                    </div>
+                </div>
+
+                <!-- Ajustes Visuales -->
+                <div class="visual-settings mt-4"
+                    style="background: rgba(0,0,0,0.2); padding: 15px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                    <h3 style="font-size: 1rem; color: var(--primary); margin-bottom: 15px;">🎨 Ajustes Visuales</h3>
+
+                    <div class="control-group">
+                        <label>Forma de Nota:</label>
+                        <select id="shape-select" class="glass-select">
+                            <option value="circle">Círculos</option>
+                            <option value="diamond">Diamantes</option>
+                            <option value="arrow">Flechas</option>
+                            <option value="bar">Barras</option>
+                            <option value="hexagon">Hexágonos</option>
+                            <option value="triangle">Triángulos Dinámicos</option>
+                            <option value="cross">Cruces X</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Efecto Splash:</label>
+                        <select id="splash-select" class="glass-select">
+                            <option value="rings">Anillos Expansivos</option>
+                            <option value="sparks">Chispas Neón</option>
+                            <option value="stars">Estrellas Pop</option>
+                            <option value="firework">Fuegos Artificiales</option>
+                            <option value="shockwave">Ondas de Choque</option>
+                            <option value="laser">Rayos Láser</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Tamaño de Nota: <span id="size-val">45px</span></label>
+                        <input type="range" id="size-range" min="10" max="45" step="1" value="45">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label for="speed-range">Velocidad de Caída: <span id="speed-val">3.0x</span></label>
+                        <input type="range" id="speed-range" min="1" max="4" step="0.1" value="3.0">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>🔊 Volumen Canción <span id="vol-music-val">100%</span></label>
+                        <input type="range" id="vol-music" min="0" max="1" step="0.01" value="1">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>💥 Volumen Efectos <span id="vol-sfx-val">40%</span></label>
+                        <input type="range" id="vol-sfx" min="0" max="1" step="0.01" value="0.4">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>⏱️ Offset de Audio: <span id="offset-val">0 ms</span></label>
+                        <input type="range" id="offset-range" min="-250" max="250" step="5" value="0">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label>Dirección de Scroll:</label>
+                        <div class="mode-selector" id="scroll-selector">
+                            <button class="mode-btn active" data-dir="down">Downscroll</button>
+                            <button class="mode-btn" data-dir="up">Upscroll</button>
+                        </div>
+                    </div>
+
+                    <div class="control-group mt-2"
+                        style="margin-top: 15px; display: flex; align-items: center; justify-content: space-between;">
+                        <label style="margin-bottom: 0;">Barras de Fondo:</label>
+                        <input type="checkbox" id="visualizer-toggle" checked
+                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-top: 15px;">
+                        <span style="font-size: 0.85rem; font-weight: 600;">Auto-Play (Playtest Mod)</span>
+                        <input type="checkbox" id="autoplay-toggle"
+                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--success);">
+                    </div>
+
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-top: 15px;">
+                        <span style="font-size: 0.85rem; font-weight: 600;">🔊 Hitsounds (Feedback)</span>
+                        <input type="checkbox" id="hitsound-toggle" checked
+                            style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
+                    </div>
+
+                    <div class="control-group mt-2" style="margin-top: 15px;">
+                        <label for="touch-opacity-range">📱 Transparencia Táctil: <span id="touch-opacity-val">30%</span></label>
+                        <input type="range" id="touch-opacity-range" min="0" max="100" step="5" value="30">
+                    </div>
+
+                    <!-- Vista Previa -->
+                    <div class="preview-box"
+                        style="margin-top: 15px; border-radius: 8px; background: rgba(0,0,0,0.4); text-align: center; overflow: hidden; height: 80px; position: relative;">
+                        <canvas id="preview-canvas" width="200" height="80"
+                            style="display: block; margin: 0 auto;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Controles Principales -->
+                <div class="action-buttons">
+                    <button id="btn-process" class="btn-primary" disabled>Generar Mapa</button>
+                    <button id="btn-play" class="btn-success hidden">¡Jugar!</button>
+                    <button id="btn-pause" class="btn-primary hidden" style="margin-top: 5px;">⏸ Pausa / Reanudar
+                        (P)</button>
+                </div>
+
+                <div id="status-text" class="status-text"></div>
+            </div>
+
+            <div class="controls-hint">
+                <h3>Controles de Juego (Click para re-asignar)</h3>
+                <div class="keys-display" id="custom-keys-container">
+                    <button class="key key-bind-btn" data-col="0">D</button>
+                    <button class="key key-bind-btn" data-col="1">F</button>
+                    <button class="key key-bind-btn" data-col="2">J</button>
+                    <button class="key key-bind-btn" data-col="3">K</button>
+                </div>
+                <p>O usa las Flechas Direccionales</p>
+            </div>
+
+            <!-- MODO ONLINE (MULTIJUGADOR P2P) -->
+            <div class="online-multiplayer-section mt-4 glass-sub-panel">
+                <h3 class="section-title">🌐 Modo Online (P2P)</h3>
+                <div class="online-controls">
+                    <!-- Room Creation / Join Form -->
+                    <div id="room-form">
+                        <div class="username-container" style="margin-bottom: 16px;">
+                            <input type="text" id="online-username" placeholder="Tu Nombre de Usuario" 
+                                   class="glass-input" style="width: 100%; text-align: center; letter-spacing: 1px; font-size: 1.1rem; padding: 12px; border-radius: 12px; box-sizing: border-box;" maxlength="15">
+                        </div>
+                        <button id="btn-create-room" class="btn-primary w-full">🎮 CREAR SALA</button>
+                        <div class="or-separator">— ó —</div>
+                        <div class="join-room-container">
+                            <input type="text" id="join-room-code" placeholder="Código (5 dígitos)" 
+                                   class="glass-input" maxlength="5" inputmode="numeric" pattern="[0-9]*">
+                            <button id="btn-join-room" class="btn-success">Unirse</button>
+                        </div>
+                    </div>
+
+                    <!-- Room Info (shown after creating/joining) -->
+                    <div id="room-info" class="hidden">
+                        <div class="room-code-display">
+                            <span id="room-info-label" class="room-label">CÓDIGO DE SALA</span>
+                            <div class="room-code-row">
+                                <span id="room-id-display" class="room-code-value">-----</span>
+                                <button id="btn-copy-code" class="btn-copy" title="Copiar código">📋</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lobby Status -->
+                    <div id="lobby-status" class="lobby-status-box">
+                        <div class="pulse-indicator" id="pulse-dot"></div>
+                        <span id="lobby-status-text">Esperando acción...</span>
+                    </div>
+
+                    <!-- Player Slots -->
+                    <div class="lobby-players">
+                        <div class="player-slot">
+                            <span class="avatar">🎮</span>
+                            <span>P1:</span>
+                            <span id="slot-p1" class="slot waiting">Jugador 1</span>
+                        </div>
+                        <div class="player-slot">
+                            <span class="avatar">🕹️</span>
+                            <span>P2:</span>
+                            <span id="slot-p2" class="slot waiting">Jugador 2</span>
+                        </div>
+                    </div>
+
+                    <!-- File Transfer Progress -->
+                    <div id="sync-progress-container" class="sync-progress hidden">
+                        <label>Sincronizando canción...</label>
+                        <div class="progress-bar-container">
+                            <div id="sync-progress-bar" class="sync-bar-fill" style="width: 0%;"></div>
+                        </div>
+                        <span id="sync-progress-text" class="sync-pct-text">0%</span>
+                    </div>
+
+                    <!-- Leave Room Button -->
+                    <button id="btn-leave-room" class="btn-danger w-full hidden">✕ Salir de la Sala</button>
+                </div>
+            </div>
+
+            <!-- MODOS DE JUEGO -->
+            <div class="game-modes-section mt-4">
+                <h3 class="section-title">Modos de Juego</h3>
+
+                <div class="mode-category heaven">
+                    <h4>-Heaven-</h4>
+                    <div class="mode-options">
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-easier"> Easier
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-nodeath"> No death
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-slowdown"> Slow Down
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mode-category hard">
+                    <h4>-Hard-</h4>
+                    <div class="mode-options">
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-harder"> Harder
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-healthdrain"> Health drain
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-speedup"> Speed Up
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mode-category wannacry">
+                    <h4>-You might wanna cry-</h4>
+                    <div class="mode-options">
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-nono"> NO-NO
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-untouchable"> Untouchable
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-internet"> Internet Connection
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-double"> Double-Double
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-swapinout"> Swap-In-Out
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-laser"> Laser Danger
+                        </label>
+                        <label class="mode-checkbox">
+                            <input type="checkbox" id="mode-wannacry"> WannaCry
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="footer-credit"
+                style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid rgba(255,255,255,0.05); text-align: center; font-size: 0.8rem; color: var(--text-muted);">
+                Made by <strong>xkahan</strong> Using <a href="https://antigravity.ai" target="_blank"
+                    style="color: var(--primary); text-decoration: none; font-weight: 700;">Antigravity</a>
+            </div>
+        </div>
+
+        <!-- Center Panel: Rhythm Game Canvas -->
+        <div class="panel game-panel">
+            <!-- Barra de Vida -->
+            <div class="health-container"
+                style="position: absolute; top: 0; left: 0; width: 100%; height: 8px; background: rgba(255,0,0,0.3); z-index: 20;">
+                <div id="health-bar"
+                    style="height: 100%; width: 50%; background: var(--success); transition: width 0.2s, background-color 0.2s; box-shadow: 0 0 10px var(--success);">
+                </div>
+            </div>
+
+            <!-- Puntuación flotante -->
+            <div class="hud">
+                <div class="score-box">Puntuación: <span id="score-display">0</span></div>
+                <div class="active-modes-container" id="active-modes-display"></div>
+                <div class="combo-box">Combo: <span id="combo-display">0</span>x</div>
+            </div>
+
+            <!-- Versus HUD (Multijugador Online) -->
+            <div id="versus-hud" class="versus-hud hidden">
+                <div class="versus-label" id="versus-name-p1">TÚ</div>
+                <div class="versus-bar-bg">
+                    <div id="versus-fill-p1" class="versus-bar-fill-p1"></div>
+                    <div id="versus-fill-p2" class="versus-bar-fill-p2"></div>
+                </div>
+                <div class="versus-label" id="versus-name-p2">OPONENTE</div>
+            </div>
+
+            <!-- Marcadores Duales (Multijugador Online) -->
+            <div id="dual-hud" class="dual-hud-container hidden">
+                <div class="dual-hud-side left">
+                    <div class="dual-hud-title" id="display-name-p1">TÚ</div>
+                    <div id="dual-score-p1" class="dual-hud-score">0</div>
+                    <div id="dual-combo-p1" class="dual-hud-combo">0x</div>
+                </div>
+                <div class="dual-hud-side right">
+                    <div class="dual-hud-title" id="display-name-p2">OPONENTE</div>
+                    <div id="dual-score-p2" class="dual-hud-score">0</div>
+                    <div id="dual-combo-p2" class="dual-hud-combo">0x</div>
+                </div>
+            </div>
+
+            <!-- Separate lane windows for DOM layout/borders/shadows -->
+            <div id="game-lanes-layout" style="display: flex; gap: 80px; justify-content: center; align-items: center; width: 100%; height: 100%; pointer-events: none; position: absolute; top: 0; left: 0; z-index: 1;">
+                <div id="game-window-p1" class="game-lane-window" style="width: 500px; height: 100%; background: rgba(10, 11, 16, 0.9); border-left: 2px solid rgba(255, 255, 255, 0.1); border-right: 2px solid rgba(255, 255, 255, 0.1); box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);"></div>
+                <div id="game-window-p2" class="game-lane-window hidden" style="width: 440px; height: 100%; background: rgba(13, 14, 21, 0.9); border-left: 2px solid rgba(255, 255, 255, 0.1); border-right: 2px solid rgba(255, 255, 255, 0.1); box-shadow: 0 0 50px rgba(0, 0, 0, 0.5); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);"></div>
+            </div>
+
+            <div id="game-container" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: transparent !important; box-shadow: none !important; border: none !important; backdrop-filter: none !important; -webkit-backdrop-filter: none !important; z-index: 5; overflow: hidden;">
+                <canvas id="game-canvas"></canvas>
+
+                <!-- Mobile Touch Overlay (4 Colored Touch Zones) -->
+                <div id="mobile-touch-container" class="mobile-touch-container hidden">
+                    <div class="touch-panel touch-panel-red" data-col="0">
+                        <span class="touch-label">D</span>
+                    </div>
+                    <div class="touch-panel touch-panel-blue" data-col="1">
+                        <span class="touch-label">F</span>
+                    </div>
+                    <div class="touch-panel touch-panel-green" data-col="2">
+                        <span class="touch-label">J</span>
+                    </div>
+                    <div class="touch-panel touch-panel-yellow" data-col="3">
+                        <span class="touch-label">K</span>
+                    </div>
+                </div>
+
+                <div id="typewriter-title" class="typewriter-title hidden">
+                    <div id="typewriter-artist" class="tw-artist"></div>
+                    <div id="typewriter-song" class="tw-song"></div>
+                </div>
+
+                <div id="hit-feedback" class="feedback-text"></div>
+                <div id="luck-msg" class="luck-msg hidden">MUCHA SUERTE</div>
+
+                <!-- Pantalla de Resultados (Overlay) -->
+                <div id="results-screen" class="results-overlay hidden">
+                    <div class="results-content glass-panel">
+                        <h2 class="results-title">RESULTADOS</h2>
+                        <div class="results-main">
+                            <div id="result-rank" class="result-rank">S</div>
+                            <div class="results-stats">
+                                <div class="stat-row"><span class="stat-label">PERFECT</span><span id="res-perfect"
+                                        class="stat-value color-perfect">0</span></div>
+                                <div class="stat-row"><span class="stat-label">GREAT</span><span id="res-great"
+                                        class="stat-value color-great">0</span></div>
+                                <div class="stat-row"><span class="stat-label">OK</span><span id="res-ok"
+                                        class="stat-value color-ok">0</span></div>
+                                <div class="stat-row"><span class="stat-label">MISS</span><span id="res-miss"
+                                        class="stat-value color-miss">0</span></div>
+                            </div>
+                        </div>
+                        <div class="results-footer">
+                            <div class="footer-item">
+                                <span class="footer-label">COMBO MÁXIMO</span>
+                                <span id="res-max-combo" class="footer-value">0</span>
+                            </div>
+                            <div class="footer-item">
+                                <span class="footer-label">PUNTUACIÓN TOTAL</span>
+                                <span id="res-score" class="footer-value">0</span>
+                            </div>
+                        </div>
+                        <div class="results-actions">
+                            <button id="btn-results-retry" class="btn-success">REINTENTAR</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel: Theme Selector Sidebar -->
+        <div id="theme-menu" class="panel right-panel glass-panel themes-panel collapsed">
+            <h3>Temáticas</h3>
+            <button id="btn-force-secondary" class="btn-force-secondary" title="Forzar Estilo Secundario (Modo Difícil)">Force secondary map style</button>
+            <div class="theme-options">
+                <button class="theme-opt active" data-theme="default" data-desc="El estilo neón clásico de NeonBeat.">Neon Night (Default)</button>
+                <button class="theme-opt" data-theme="heaven" data-desc="Vuelo infinito en cielos celestes.">Heavenly Blue</button>
+                <button class="theme-opt" data-theme="cyberpunk" data-desc="Dunas doradas y ritmo desértico.">Shifting Sand</button>
+                <button class="theme-opt" data-theme="sunflower" data-desc="Campos de girasoles a alta velocidad en un atardecer.">Golden Field</button>
+                <button class="theme-opt" data-theme="recreative" data-desc="Un vacío oscuro que reacciona a los sonidos.">Recreative Space</button>
+                <button class="theme-opt" data-theme="city" data-desc="Noche de ciudad con luces de neón y rascacielos.">City Night</button>
+                <button class="theme-opt" data-theme="galaxy" data-desc="Viaje frontal lento entre astros y ruinas espaciales en una galaxia lejana.">Galaxy Voyage</button>
+                <button class="theme-opt" data-theme="forest" data-desc="Bosque nevado con parallax de 7 capas bajo una noche estrellada.">Snowy Forest</button>
+                <button class="theme-opt" data-theme="glass" data-desc="Mosaicos de vidrio de colores que simulan vitrales en movimiento diagonal.">Stained Glass</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="extreme-diff-msg" class="extreme-diff-banner hidden">
+        Enhorabuena, encontraste una canción extremadamente difícil
+    </div>
+
+    <!-- Now Playing Widget -->
+    <div id="now-playing-widget" class="np-widget">
+        <div class="np-timer-pill" id="np-timer">0:00</div>
+        <div class="np-main-pill">
+            <div class="np-thumbnail" id="np-thumbnail">
+                <div class="np-cd-icon">
+                    <div class="np-cd-inner"></div>
+                </div>
+            </div>
+            <div class="np-text-col">
+                <div class="np-now-playing-text">NOW PLAYING</div>
+                <div class="np-song-name" id="np-song-name">MP3 IMPORTED NAME</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Overlay Panel -->
+    <div id="custom-overlay-panel" class="custom-overlay-panel hidden">
+        <div class="custom-window-content glass-panel">
+            <button id="btn-close-custom-window" class="btn-close-custom-window" title="Cerrar">✕</button>
+            <div id="custom-window-body" class="custom-window-body">
+                <div class="song-panels-container">
+                    <!-- Panel 1: No Devil Lived On -->
+                    <div class="song-panel rainbow-theme" onclick="loadPreloadedSong('noDevilLivedOn', 'No Devil Lived On')">
+                        <div class="song-title">No Devil Lived On</div>
+                        <div class="song-image-container">
+                            <img src="assets/robot.webp" alt="No Devil Lived On">
+                        </div>
+                    </div>
+                    
+                    <!-- Panel 2: Pictured As Perfect -->
+                    <div class="song-panel pink-theme" onclick="loadPreloadedSong('picturedAsPerfect', 'Pictured As Perfect')">
+                        <div class="song-image-container">
+                            <img src="assets/glitch.webp" alt="Pictured As Perfect">
+                        </div>
+                        <div class="song-title">Pictured As Perfect</div>
+                    </div>
+                    
+                    <!-- Panel 3: Lost In Snow -->
+                    <div class="song-panel blue-theme" onclick="loadPreloadedSong('lostInSnow', 'Lost In Snow')">
+                        <div class="song-title">Lost In Snow</div>
+                        <div class="song-image-container">
+                            <img src="assets/snow.webp" alt="Lost In Snow">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="preloadedSongs.js"></script>
+    <script src="audioAnalyzer.js"></script>
+    <script src="game.js"></script>
+    <script src="multiplayer.js"></script>
+</body>
+
+</html>
