@@ -61,7 +61,7 @@
     // Previous code JSON.parsed the raw XML → always failed → other players never saw rooms.
     const LOBBY_APP_KEY = 'if0zmh0e';
     const LOBBY_ROOMS_KEY = 'rooms';
-    const ROOM_TTL_MS = 10 * 60 * 1000;
+    const ROOM_TTL_MS = 60 * 1000;
     let _lobbyHeartbeatTimer = null;
     let _lobbyRefreshTimer = null;
 
@@ -248,15 +248,21 @@
             let rooms = getLocalPublicRooms().filter(r => r.code !== code && (now - r.created < ROOM_TTL_MS));
             saveLocalPublicRooms(rooms);
 
-            let remote = [];
-            try { remote = await fetchRemoteRooms(); } catch (e) {}
-            const merged = mergeRooms(remote).filter(r => r.code !== code);
-            try {
-                await pushRemoteRooms(merged);
-                console.log(`[Lobby] Removed room ${code} from lobby list`);
-            } catch (e) {
-                console.warn('[Lobby] Could not remove room remotely:', e);
+            // Read-modify-write with one retry to reduce lost updates from concurrent hosts
+            for (let attempt = 0; attempt < 2; attempt++) {
+                let remote = [];
+                try { remote = await fetchRemoteRooms(); } catch (e) { console.warn('[Lobby] fetch before remove failed:', e); }
+                const merged = mergeRooms(remote).filter(r => r.code !== code);
+                try {
+                    await pushRemoteRooms(merged);
+                    console.log(`[Lobby] Removed room ${code} from lobby list`);
+                    return;
+                } catch (e) {
+                    console.warn('[Lobby] remove push attempt failed:', e);
+                    await new Promise(r => setTimeout(r, 200 + Math.random() * 300));
+                }
             }
+            console.warn('[Lobby] Room removal failed after retries');
         } catch (e) {
             console.error("[Lobby] Error removing room:", e);
         }
@@ -271,7 +277,7 @@
             }
             // Refresh created timestamp so the room stays visible
             registerRoomInLobby(code, hostName);
-        }, 60 * 1000);
+        }, 20 * 1000);
     }
 
     function stopLobbyHeartbeat() {
@@ -528,7 +534,16 @@
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    {
+                        urls: [
+                            'turn:openrelay.metered.ca:80',
+                            'turn:openrelay.metered.ca:443',
+                            'turn:openrelay.metered.ca:443?transport=tcp'
+                        ],
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
                 ]
             }
         });
@@ -603,7 +618,16 @@
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
                     { urls: 'stun:stun1.l.google.com:19302' },
-                    { urls: 'stun:stun2.l.google.com:19302' }
+                    { urls: 'stun:stun2.l.google.com:19302' },
+                    {
+                        urls: [
+                            'turn:openrelay.metered.ca:80',
+                            'turn:openrelay.metered.ca:443',
+                            'turn:openrelay.metered.ca:443?transport=tcp'
+                        ],
+                        username: 'openrelayproject',
+                        credential: 'openrelayproject'
+                    }
                 ]
             }
         });
@@ -628,6 +652,8 @@
                     setStatusError('No se encontró la sala. Verifica el código.');
                     if (btnJoinRoom) btnJoinRoom.disabled = false;
                     try { peer.destroy(); } catch(e) {}
+                    // Clean up ghost room from lobby
+                    removeRoomFromLobby(targetCode);
                 }
             }, 10000);
 
@@ -649,6 +675,8 @@
             console.error('[MP] Guest error:', err);
             if (err.type === 'peer-unavailable') {
                 setStatusError('Sala no encontrada. ¿El código es correcto?');
+                // Clean up ghost room from lobby
+                removeRoomFromLobby(targetCode);
             } else {
                 setStatusError('Error de conexión: ' + (err.message || err.type));
             }
@@ -1277,35 +1305,4 @@
     // Exponer globalmente para permitir salir de la sala al regresar al menú principal
     window.leaveRoom = leaveRoom;
     window.resetOnlineState = resetOnlineState;
-
-    function removeRoomFromLobbyUnload(code) {
-        if (!code) return;
-        stopLobbyHeartbeat();
-        try {
-            const now = Date.now();
-            const localRooms = getLocalPublicRooms().filter(r => r.code !== code && (now - r.created < ROOM_TTL_MS));
-            saveLocalPublicRooms(localRooms);
-
-            const payload = serializeRoomsForKv(localRooms) || 'EMPTY';
-            const encoded = encodeURIComponent(payload);
-            
-            // Use keepalive: true to ensure the browser completes the request after unload
-            fetch(
-                `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LOBBY_APP_KEY}/${LOBBY_ROOMS_KEY}/${encoded}`,
-                { 
-                    method: 'POST',
-                    keepalive: true
-                }
-            ).catch(err => console.warn('[Lobby] Unload remove failed:', err));
-        } catch (e) {
-            console.error("[Lobby] Error in unload remove:", e);
-        }
-    }
-
-    window.addEventListener('beforeunload', () => {
-        if (window.onlineMode && window.onlineMode.roomId && window.onlineMode.role === 'host') {
-            const roomCode = window.onlineMode.roomId.replace('NEONBEAT-', '');
-            removeRoomFromLobbyUnload(roomCode);
-        }
-    });
 })();
