@@ -3460,6 +3460,11 @@ window.startGameplay = async function (customStartTimeDelay = 0) {
         // Mostrar Pantalla de Resultados
         setTimeout(() => showResults(), 1000);
     };
+
+    // Show touch controls automatically in mobile layout
+    if (document.body.classList.contains('mobile-version') && typeof window.showTouchControls === 'function') {
+        window.showTouchControls();
+    }
 };
 
 btnPlayGame.addEventListener('click', async () => {
@@ -3988,7 +3993,7 @@ function showResults() {
     if (gameContainer) gameContainer.classList.remove('lost-in-snow-active');
     document.body.classList.remove('lost-in-snow-song');
 
-    const totalNotes = window.audioMap.length;
+    const totalNotes = window.audioMap ? window.audioMap.length : 0;
 
     // Accuracy based on judged notes
     const totalJudged = countPerfect + countGreat + countOk + countMiss;
@@ -4016,6 +4021,10 @@ function showResults() {
         rank = 'C'; rankClass = 'rank-C';
     }
 
+    // Calculate and apply points
+    const earnedPoints = calculatePoints(rank, totalNotes);
+    const updatedPointsInfo = addPlayerPoints(earnedPoints);
+
     // Default Singleplayer Results Content
     const resultsContentEl = document.querySelector('.results-content');
     if (resultsContentEl) {
@@ -4039,6 +4048,15 @@ function showResults() {
                     <span class="footer-label">PUNTUACIÓN TOTAL</span>
                     <span id="res-score" class="footer-value">${Math.round(score)}</span>
                 </div>
+            </div>
+            <div class="results-points-display" style="text-align: center; margin: 15px 0 5px 0; padding: 12px; background: rgba(0, 0, 0, 0.25); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
+                <span style="font-size: 0.8rem; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 0.5px;">Evolución de Puntos</span>
+                <strong style="font-size: 1.35rem; color: ${earnedPoints >= 0 ? '#10b981' : '#ef4444'};">
+                    ${earnedPoints >= 0 ? '+' : ''}${earnedPoints} PTS
+                </strong>
+                <span style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-top: 3px;">
+                    Total actual: <strong style="color: #fff;">${updatedPointsInfo.total} pts</strong> (<span style="color: var(--primary); font-weight: bold;">${getTierName(updatedPointsInfo.total)}</span>)
+                </span>
             </div>
             <div class="results-actions">
                 <button id="btn-results-retry" class="btn-success">REINTENTAR</button>
@@ -4101,6 +4119,9 @@ function showResults() {
                         <h3 class="mp-col-title">${isLocal ? 'JUGADOR 1' : 'TÚ'}</h3>
                         <div class="mp-col-rank ${rankClass}">${rank}</div>
                         <div class="mp-col-accuracy">${accuracy.toFixed(1)}% ACC</div>
+                        <div style="font-size: 0.8rem; text-align: center; margin: 6px 0; color: ${earnedPoints >= 0 ? '#10b981' : '#ef4444'}; font-weight: 700;">
+                            ${earnedPoints >= 0 ? '+' : ''}${earnedPoints} PTS (Total: ${updatedPointsInfo.total} pts)
+                        </div>
                         <div class="mp-stats-list">
                             <div class="mp-stat-item"><span class="mp-label">Puntos:</span> <span class="mp-val">${Math.round(score)}</span></div>
                             <div class="mp-stat-item"><span class="mp-label">Max Combo:</span> <span class="mp-val">${maxCombo}</span></div>
@@ -9619,10 +9640,177 @@ function loadProfile() {
     return { name, avatar, avatarType };
 }
 
+// --- Rankings & Tiers System ---
+function getTierName(points) {
+    if (points >= 50000) return 'LUNARIUM';
+    if (points >= 25000) return 'SOLARIUM';
+    if (points >= 10000) return 'Emerald';
+    if (points >= 8000) return 'Diamond';
+    if (points >= 7000) return 'Steel';
+    if (points >= 4000) return 'Bronze';
+    return 'Dirt';
+}
+
+function calculatePoints(rank, totalNotes) {
+    if (totalNotes < 1500) {
+        const basePoints = {
+            'SS': 100,
+            'S++': 200,
+            'S+': 100,
+            'S': 50,
+            'A': 10,
+            'B': -10,
+            'C': -20
+        };
+        return basePoints[rank] || 0;
+    } else {
+        // >= 1500 notes
+        const basePoints = {
+            'SS': 1500,
+            'S++': 700,
+            'S+': 300,
+            'S': 150,
+            'A': 50,
+            'B': 5,
+            'C': -15
+        };
+        // Canción con 3000 notas: El doble de puntos que las de 1500 notas (linear scaling)
+        const multiplier = totalNotes / 1500;
+        return Math.round((basePoints[rank] || 0) * multiplier);
+    }
+}
+
+function addPlayerPoints(pts) {
+    const currentUser = localStorage.getItem('neonbeat-current-user');
+    let newPoints = 0;
+    if (currentUser) {
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        if (accounts[currentUser]) {
+            accounts[currentUser].points = (accounts[currentUser].points || 0) + pts;
+            newPoints = accounts[currentUser].points;
+            localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        }
+    } else {
+        // Guest mode
+        let guestPts = parseInt(localStorage.getItem('neonbeat-guest-points')) || 0;
+        guestPts += pts;
+        newPoints = guestPts;
+        localStorage.setItem('neonbeat-guest-points', guestPts);
+    }
+    
+    // Refresh main menu profile UI immediately
+    refreshProfileUI();
+    
+    return { earned: pts, total: newPoints };
+}
+
+function updateModalAccountView() {
+    const currentUser = localStorage.getItem('neonbeat-current-user');
+    const loggedInView = document.getElementById('account-logged-in-view');
+    const loggedOutView = document.getElementById('account-logged-out-view');
+    
+    if (!loggedInView || !loggedOutView) return;
+
+    if (currentUser) {
+        loggedInView.classList.remove('hidden');
+        loggedOutView.classList.add('hidden');
+
+        const loggedUsername = document.getElementById('logged-username');
+        const loggedUserTier = document.getElementById('logged-user-tier');
+        const loggedUserPoints = document.getElementById('logged-user-points');
+
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        const userAcc = accounts[currentUser] || { points: 0 };
+        
+        if (loggedUsername) loggedUsername.innerText = currentUser;
+        if (loggedUserTier) loggedUserTier.innerText = getTierName(userAcc.points);
+        if (loggedUserPoints) loggedUserPoints.innerText = userAcc.points || 0;
+    } else {
+        loggedInView.classList.add('hidden');
+        loggedOutView.classList.remove('hidden');
+    }
+}
+
 function saveProfile(name, avatar, avatarType) {
-    localStorage.setItem('neonbeat-username', name);
-    localStorage.setItem('neonbeat-avatar', avatar);
-    localStorage.setItem('neonbeat-avatar-type', avatarType);
+    const currentUser = localStorage.getItem('neonbeat-current-user');
+    if (currentUser) {
+        // Save to account
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        if (accounts[currentUser]) {
+            accounts[currentUser].avatar = avatar;
+            accounts[currentUser].avatarType = avatarType;
+            localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        }
+    } else {
+        // Save to guest profile
+        localStorage.setItem('neonbeat-username', name);
+        localStorage.setItem('neonbeat-avatar', avatar);
+        localStorage.setItem('neonbeat-avatar-type', avatarType);
+    }
+
+    // Sync with multiplayer input username
+    const mpUserEl = document.getElementById('online-username');
+    if (mpUserEl) {
+        mpUserEl.value = currentUser ? currentUser : name;
+        mpUserEl.dispatchEvent(new Event('input'));
+    }
+
+    refreshProfileUI();
+}
+
+function refreshProfileUI() {
+    const currentUser = localStorage.getItem('neonbeat-current-user');
+    let name = '';
+    let avatar = '🎮';
+    let avatarType = 'emoji';
+    let points = 0;
+
+    if (currentUser) {
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        const userAcc = accounts[currentUser];
+        if (userAcc) {
+            name = currentUser; // Nickname is fixed to username
+            avatar = userAcc.avatar || '🎮';
+            avatarType = userAcc.avatarType || 'emoji';
+            points = userAcc.points || 0;
+        } else {
+            const guestProfile = loadProfile();
+            name = guestProfile.name;
+            avatar = guestProfile.avatar;
+            avatarType = guestProfile.avatarType;
+            points = parseInt(localStorage.getItem('neonbeat-guest-points')) || 0;
+        }
+    } else {
+        const guestProfile = loadProfile();
+        name = guestProfile.name;
+        avatar = guestProfile.avatar;
+        avatarType = guestProfile.avatarType;
+        points = parseInt(localStorage.getItem('neonbeat-guest-points')) || 0;
+    }
+
+    const nameEl = document.getElementById('menu-profile-name');
+    const picEl = document.getElementById('menu-profile-pic');
+    const fallbackEl = document.getElementById('menu-profile-pic-fallback');
+    const tierEl = document.getElementById('menu-profile-tier');
+    const pointsEl = document.getElementById('menu-profile-points');
+
+    if (nameEl) nameEl.innerText = name;
+    if (tierEl) tierEl.innerText = getTierName(points);
+    if (pointsEl) pointsEl.innerText = 'Puntos: ' + points;
+
+    if (avatarType === 'image') {
+        if (picEl) {
+            picEl.src = avatar;
+            picEl.classList.remove('hidden');
+        }
+        if (fallbackEl) fallbackEl.classList.add('hidden');
+    } else {
+        if (picEl) picEl.classList.add('hidden');
+        if (fallbackEl) {
+            fallbackEl.innerText = avatar;
+            fallbackEl.classList.remove('hidden');
+        }
+    }
 
     // Sync with multiplayer input username
     const mpUserEl = document.getElementById('online-username');
@@ -9631,30 +9819,8 @@ function saveProfile(name, avatar, avatarType) {
         mpUserEl.dispatchEvent(new Event('input'));
     }
 
-    refreshProfileUI();
-}
-
-function refreshProfileUI() {
-    const profile = loadProfile();
-    const nameEl = document.getElementById('menu-profile-name');
-    const picEl = document.getElementById('menu-profile-pic');
-    const fallbackEl = document.getElementById('menu-profile-pic-fallback');
-
-    if (nameEl) nameEl.innerText = profile.name;
-
-    if (profile.avatarType === 'image') {
-        if (picEl) {
-            picEl.src = profile.avatar;
-            picEl.classList.remove('hidden');
-        }
-        if (fallbackEl) fallbackEl.classList.add('hidden');
-    } else {
-        if (picEl) picEl.classList.add('hidden');
-        if (fallbackEl) {
-            fallbackEl.innerText = profile.avatar;
-            fallbackEl.classList.remove('hidden');
-        }
-    }
+    // Update account view in modal if it is loaded
+    updateModalAccountView();
 }
 
 // Edit Profile Modal Wiring
@@ -9674,24 +9840,48 @@ function initProfileModal() {
     if (!editCard || !modal) return;
 
     editCard.onclick = () => {
+        const currentUser = localStorage.getItem('neonbeat-current-user');
         const profile = loadProfile();
-        nameInput.value = profile.name;
-        tempSelectedAvatar = profile.avatar;
-        tempSelectedAvatarType = profile.avatarType;
+        let activeAvatar = profile.avatar;
+        let activeAvatarType = profile.avatarType;
+
+        if (currentUser) {
+            nameInput.value = currentUser;
+            nameInput.disabled = true; // Disable nickname edit when logged in
+            
+            const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+            const userAcc = accounts[currentUser] || {};
+            activeAvatar = userAcc.avatar || '🎮';
+            activeAvatarType = userAcc.avatarType || 'emoji';
+        } else {
+            nameInput.value = profile.name;
+            nameInput.disabled = false;
+            activeAvatar = profile.avatar;
+            activeAvatarType = profile.avatarType;
+        }
+
+        tempSelectedAvatar = activeAvatar;
+        tempSelectedAvatarType = activeAvatarType;
 
         // Reset file upload label
-        if (fileNameSpan) fileNameSpan.innerText = profile.avatarType === 'image' ? 'Imagen cargada' : 'Ningún archivo seleccionado';
+        if (fileNameSpan) fileNameSpan.innerText = activeAvatarType === 'image' ? 'Imagen cargada' : 'Ningún archivo seleccionado';
         if (fileInput) fileInput.value = '';
 
         // Highlight active preset
         presetBtns.forEach(btn => {
-            if (profile.avatarType === 'emoji' && btn.dataset.emoji === profile.avatar) {
+            if (activeAvatarType === 'emoji' && btn.dataset.emoji === activeAvatar) {
                 btn.classList.add('selected');
             } else {
                 btn.classList.remove('selected');
             }
         });
 
+        // Make sure login tab is shown by default if not logged in
+        if (!currentUser && typeof window.switchAccountTab === 'function') {
+            window.switchAccountTab('login');
+        }
+
+        updateModalAccountView();
         modal.classList.remove('hidden');
     };
 
@@ -9889,6 +10079,47 @@ function initSettingsWiring() {
             }
         };
     });
+
+    // Fullscreen Toggle
+    const btnFullscreen = document.getElementById('btn-toggle-fullscreen');
+    if (btnFullscreen) {
+        btnFullscreen.onclick = () => {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                const docEl = document.documentElement;
+                if (docEl.requestFullscreen) {
+                    docEl.requestFullscreen();
+                } else if (docEl.webkitRequestFullscreen) {
+                    docEl.webkitRequestFullscreen();
+                } else if (docEl.msRequestFullscreen) {
+                    docEl.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (document.msExitFullscreen) {
+                    document.msExitFullscreen();
+                }
+            }
+        };
+
+        const updateFullscreenButton = () => {
+            const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            if (isFS) {
+                btnFullscreen.innerHTML = '📺 Salir de Pantalla Completa';
+                btnFullscreen.classList.remove('btn-success');
+                btnFullscreen.classList.add('btn-primary');
+            } else {
+                btnFullscreen.innerHTML = '📺 Pantalla Completa';
+                btnFullscreen.classList.remove('btn-primary');
+                btnFullscreen.classList.add('btn-success');
+            }
+        };
+
+        document.addEventListener('fullscreenchange', updateFullscreenButton);
+        document.addEventListener('webkitfullscreenchange', updateFullscreenButton);
+    }
 }
 
 // Initialize local co-op mode state
@@ -10187,10 +10418,12 @@ function initLocalModeSystem() {
 function initNewMenuSystem() {
     refreshProfileUI();
     initProfileModal();
+    initAccountSystem();
     initSettingsWiring();
     initSettingsTabValues();
     initLocalModeSystem();
     initTouchControls();
+    initLayoutMode();
 
     // Make sure we show the main menu screen by default and hide app container initially
     window.showScreen('main-menu');
@@ -10297,6 +10530,9 @@ function initTouchControls() {
         panels.forEach(p => p.classList.remove('active'));
     }
 
+    window.showTouchControls = showTouchControls;
+    window.hideTouchControls = hideTouchControls;
+
     touchContainer.addEventListener('touchstart', processTouches, { passive: false });
     touchContainer.addEventListener('touchmove', processTouches, { passive: false });
     touchContainer.addEventListener('touchend', processTouches, { passive: false });
@@ -10325,6 +10561,166 @@ function initTouchControls() {
             processTouches(e);
         }
     }, { passive: false });
+}
+
+function initLayoutMode() {
+    const savedMode = localStorage.getItem('neonbeat-layout-mode');
+    let activeMode = 'pc';
+
+    if (savedMode) {
+        activeMode = savedMode;
+    } else {
+        // Auto-detect based on userAgent or screen size
+        const isMobileDevice = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || window.innerWidth < 768;
+        activeMode = isMobileDevice ? 'mobile' : 'pc';
+        localStorage.setItem('neonbeat-layout-mode', activeMode);
+    }
+
+    applyLayoutMode(activeMode);
+
+    // Wire buttons in settings general tab
+    const selector = document.getElementById('layout-mode-selector');
+    if (selector) {
+        const buttons = selector.querySelectorAll('.mode-btn');
+        buttons.forEach(btn => {
+            // Set initial active class
+            btn.classList.toggle('active', btn.dataset.mode === activeMode);
+
+            btn.onclick = () => {
+                buttons.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const newMode = btn.dataset.mode;
+                localStorage.setItem('neonbeat-layout-mode', newMode);
+                applyLayoutMode(newMode);
+            };
+        });
+    }
+}
+
+function applyLayoutMode(mode) {
+    if (mode === 'mobile') {
+        document.body.classList.add('mobile-version');
+        document.body.classList.remove('pc-version');
+        
+        // Auto-show touch controls if playing
+        if (window.isPlaying && typeof window.showTouchControls === 'function') {
+            window.showTouchControls();
+        }
+    } else {
+        document.body.classList.add('pc-version');
+        document.body.classList.remove('mobile-version');
+        
+        // Hide touch controls if switching back to PC mode
+        if (typeof window.hideTouchControls === 'function') {
+            window.hideTouchControls();
+        }
+    }
+
+    // Force resize of canvas
+    setTimeout(() => {
+        if (typeof window.resizeCanvas === 'function') {
+            window.resizeCanvas();
+        }
+    }, 50);
+}
+
+function initAccountSystem() {
+    const tabBtnLogin = document.getElementById('tab-btn-login');
+    const tabBtnRegister = document.getElementById('tab-btn-register');
+    const formLogin = document.getElementById('form-account-login');
+    const formRegister = document.getElementById('form-account-register');
+
+    const btnLogin = document.getElementById('btn-account-login');
+    const btnRegister = document.getElementById('btn-account-register');
+    const btnLogout = document.getElementById('btn-account-logout');
+
+    const loginUser = document.getElementById('login-username-input');
+    const loginPass = document.getElementById('login-password-input');
+    const registerUser = document.getElementById('register-username-input');
+    const registerPass = document.getElementById('register-password-input');
+
+    const loginError = document.getElementById('login-error-msg');
+    const registerError = document.getElementById('register-error-msg');
+
+    if (!tabBtnLogin || !tabBtnRegister) return;
+
+    window.switchAccountTab = function(tab) {
+        if (tab === 'login') {
+            tabBtnLogin.classList.add('active');
+            tabBtnRegister.classList.remove('active');
+            formLogin.classList.remove('hidden');
+            formRegister.classList.add('hidden');
+            if (loginError) loginError.classList.add('hidden');
+        } else {
+            tabBtnLogin.classList.remove('active');
+            tabBtnRegister.classList.add('active');
+            formLogin.classList.add('hidden');
+            formRegister.classList.remove('hidden');
+            if (registerError) registerError.classList.add('hidden');
+        }
+    };
+
+    tabBtnLogin.onclick = () => window.switchAccountTab('login');
+    tabBtnRegister.onclick = () => window.switchAccountTab('register');
+
+    if (btnLogin) {
+        btnLogin.onclick = () => {
+            const username = loginUser.value.trim();
+            const password = loginPass.value;
+
+            if (!username || !password) return;
+
+            const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+            const acc = accounts[username];
+
+            if (acc && acc.password === password) {
+                localStorage.setItem('neonbeat-current-user', username);
+                loginUser.value = '';
+                loginPass.value = '';
+                if (loginError) loginError.classList.add('hidden');
+                refreshProfileUI();
+            } else {
+                if (loginError) loginError.classList.remove('hidden');
+            }
+        };
+    }
+
+    if (btnRegister) {
+        btnRegister.onclick = () => {
+            const username = registerUser.value.trim();
+            const password = registerPass.value;
+
+            if (!username || !password) return;
+
+            const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+            
+            if (accounts[username]) {
+                if (registerError) registerError.classList.remove('hidden');
+            } else {
+                // Register account
+                accounts[username] = {
+                    password: password,
+                    points: 0,
+                    avatar: '🎮',
+                    avatarType: 'emoji'
+                };
+                localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+                localStorage.setItem('neonbeat-current-user', username);
+                
+                registerUser.value = '';
+                registerPass.value = '';
+                if (registerError) registerError.classList.add('hidden');
+                refreshProfileUI();
+            }
+        };
+    }
+
+    if (btnLogout) {
+        btnLogout.onclick = () => {
+            localStorage.removeItem('neonbeat-current-user');
+            refreshProfileUI();
+        };
+    }
 }
 
 if (document.readyState === 'loading') {

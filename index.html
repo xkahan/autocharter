@@ -53,7 +53,11 @@
                         </div>
                         <div class="profile-info">
                             <span id="menu-profile-name" class="profile-name">Cargando...</span>
-                            <span class="profile-edit-hint">Click para editar nombre y foto</span>
+                            <div class="profile-tier-container" style="margin-top: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                <span id="menu-profile-tier" style="font-size: 0.85rem; font-weight: 800; color: var(--primary); letter-spacing: 0.5px; text-transform: uppercase;">Invitado</span>
+                                <span id="menu-profile-points" style="font-size: 0.75rem; color: var(--text-muted);">Puntos: 0</span>
+                            </div>
+                            <span class="profile-edit-hint" style="margin-top: 6px;">Click para editar perfil y cuenta</span>
                         </div>
                     </div>
                 </div>
@@ -71,6 +75,7 @@
                         <button class="settings-tab-btn active" data-tab="sound">Sound</button>
                         <button class="settings-tab-btn" data-tab="themes">Themes</button>
                         <button class="settings-tab-btn" data-tab="online">Online</button>
+                        <button class="settings-tab-btn" data-tab="general">General</button>
                     </div>
                 </div>
                 <div class="settings-body">
@@ -164,6 +169,32 @@
                             </label>
                         </div>
                     </div>
+
+                    <!-- General Tab Content -->
+                    <div class="settings-tab-content hidden" id="tab-general">
+                        <!-- Interface Mode Selection -->
+                        <div class="setting-option-group" style="margin-bottom: 25px; text-align: left; width: 100%; max-width: 450px; margin: 0 auto 25px auto;">
+                            <label style="display: block; font-size: 1.1rem; color: var(--text-main); font-weight: 700; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px;">Modo de Interfaz:</label>
+                            <div class="mode-selector" id="layout-mode-selector">
+                                <button class="mode-btn active" data-mode="pc">🖥️ PC / Escritorio</button>
+                                <button class="mode-btn" data-mode="mobile">📱 Móvil / Celular</button>
+                            </div>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; line-height: 1.4;">
+                                El modo móvil adapta los menús y paneles para pantallas táctiles y habilita los controles táctiles automáticamente al jugar.
+                            </p>
+                        </div>
+
+                        <!-- Fullscreen option -->
+                        <div class="setting-fullscreen-container" style="display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; padding: 25px 20px; text-align: center; border-radius: 12px; background: rgba(0, 0, 0, 0.25); border: 1px solid rgba(255, 255, 255, 0.05); margin-top: 15px; max-width: 450px; margin-left: auto; margin-right: auto;">
+                            <span style="font-size: 1.1rem; font-weight: 900; letter-spacing: 1px; color: var(--text-main); text-transform: uppercase;">Ajustes de Pantalla</span>
+                            <p style="font-size: 0.85rem; color: var(--text-muted); max-width: 320px; line-height: 1.4; margin: 0 0 10px 0;">
+                                Activa el modo de pantalla completa para una experiencia más inmersiva, especialmente recomendado en dispositivos móviles.
+                            </p>
+                            <button id="btn-toggle-fullscreen" class="btn-success" style="padding: 10px 20px; font-size: 1rem; border-radius: 8px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 8px; border: none; transition: all 0.2s; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);">
+                                📺 Pantalla Completa
+                            </button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -243,35 +274,87 @@
 
     <!-- 4. MODAL PARA EDITAR NOMBRE Y FOTO -->
     <div id="profile-edit-modal" class="modal-overlay hidden">
-        <div class="modal-content glass-panel">
-            <h2>Editar Perfil</h2>
-            <div class="modal-body">
-                <div class="profile-edit-name-group">
-                    <label for="profile-edit-name-input">Nombre de usuario</label>
-                    <input type="text" id="profile-edit-name-input" class="glass-input" placeholder="Tu apodo" maxlength="15">
-                </div>
-                
-                <div class="profile-edit-avatar-group">
-                    <label>Selecciona un avatar</label>
-                    <div class="avatar-presets">
-                        <span class="avatar-preset-btn" data-emoji="🎮">🎮</span>
-                        <span class="avatar-preset-btn" data-emoji="⚡">⚡</span>
-                        <span class="avatar-preset-btn" data-emoji="🎧">🎧</span>
-                        <span class="avatar-preset-btn" data-emoji="🔥">🔥</span>
-                        <span class="avatar-preset-btn" data-emoji="🌀">🌀</span>
-                        <span class="avatar-preset-btn" data-emoji="❄️">❄️</span>
-                        <span class="avatar-preset-btn" data-emoji="🌟">🌟</span>
-                        <span class="avatar-preset-btn" data-emoji="🐱">🐱</span>
+        <div class="modal-content glass-panel" style="width: 500px; max-height: 90vh;">
+            <h2>Editar Perfil y Cuenta</h2>
+            <div class="modal-body" style="display: flex; flex-direction: column; gap: 20px; overflow-y: auto; max-height: 55vh; padding-right: 5px;">
+                <!-- Section 1: Local Profile -->
+                <div class="profile-section-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px;">
+                    <h3 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Perfil de Jugador</h3>
+                    <div class="profile-edit-name-group">
+                        <label for="profile-edit-name-input">Nombre de usuario</label>
+                        <input type="text" id="profile-edit-name-input" class="glass-input" placeholder="Tu apodo" maxlength="15">
                     </div>
                     
-                    <div class="avatar-upload-group">
-                        <label for="avatar-file-input" class="btn-primary" style="display:inline-block; padding:8px 12px; border-radius:8px; cursor:pointer; text-align:center;">📁 Subir imagen</label>
-                        <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
-                        <span id="avatar-file-name" style="font-size:0.85rem; color:var(--text-muted); margin-left:10px;">Ningún archivo seleccionado</span>
+                    <div class="profile-edit-avatar-group" style="margin-top: 15px;">
+                        <label>Selecciona un avatar</label>
+                        <div class="avatar-presets">
+                            <span class="avatar-preset-btn" data-emoji="🎮">🎮</span>
+                            <span class="avatar-preset-btn" data-emoji="⚡">⚡</span>
+                            <span class="avatar-preset-btn" data-emoji="🎧">🎧</span>
+                            <span class="avatar-preset-btn" data-emoji="🔥">🔥</span>
+                            <span class="avatar-preset-btn" data-emoji="🌀">🌀</span>
+                            <span class="avatar-preset-btn" data-emoji="❄️">❄️</span>
+                            <span class="avatar-preset-btn" data-emoji="🌟">🌟</span>
+                            <span class="avatar-preset-btn" data-emoji="🐱">🐱</span>
+                        </div>
+                        
+                        <div class="avatar-upload-group" style="margin-top: 15px;">
+                            <label for="avatar-file-input" class="btn-primary" style="display:inline-block; padding:8px 12px; border-radius:8px; cursor:pointer; text-align:center;">📁 Subir imagen</label>
+                            <input type="file" id="avatar-file-input" accept="image/*" style="display:none;">
+                            <span id="avatar-file-name" style="font-size:0.85rem; color:var(--text-muted); margin-left:10px;">Ningún archivo seleccionado</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Section 2: Account System -->
+                <div class="profile-section-card" id="account-section-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px;">
+                    <h3 style="font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Sistema de Cuentas</h3>
+                    
+                    <!-- Connected / Logged In State View -->
+                    <div id="account-logged-in-view" class="hidden">
+                        <p style="font-size: 0.95rem; color: var(--text-main); margin-bottom: 8px;">Conectado como: <strong id="logged-username" style="color: var(--primary);">Usuario</strong></p>
+                        <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px;">Rango: <strong id="logged-user-tier" style="color: #fff;">Dirt</strong> (<span id="logged-user-points">0</span> pts)</p>
+                        <button id="btn-account-logout" class="btn-danger" style="padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: bold; cursor: pointer; border: none;">Cerrar Sesión</button>
+                    </div>
+
+                    <!-- Disconnected / Logged Out State View -->
+                    <div id="account-logged-out-view">
+                        <div style="display: flex; gap: 8px; margin-bottom: 15px; background: rgba(0, 0, 0, 0.2); padding: 4px; border-radius: 8px;">
+                            <button id="tab-btn-login" class="mode-btn active" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">Iniciar Sesión</button>
+                            <button id="tab-btn-register" class="mode-btn" style="padding: 6px 12px; font-size: 0.8rem; border-radius: 6px;">Crear Cuenta</button>
+                        </div>
+
+                        <!-- LOGIN FORM -->
+                        <div id="form-account-login">
+                            <div style="margin-bottom: 10px;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px; font-weight: bold;">Usuario:</label>
+                                <input type="text" id="login-username-input" class="glass-input" placeholder="Nombre de usuario" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px; font-weight: bold;">Contraseña:</label>
+                                <input type="password" id="login-password-input" class="glass-input" placeholder="Contraseña" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <span id="login-error-msg" style="color: #ef4444; font-size: 0.8rem; display: block; margin-bottom: 8px;" class="hidden">Usuario o contraseña incorrectos.</span>
+                            <button id="btn-account-login" class="btn-success" style="padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; cursor: pointer; border: none; width: 100%;">Entrar</button>
+                        </div>
+
+                        <!-- REGISTER FORM -->
+                        <div id="form-account-register" class="hidden">
+                            <div style="margin-bottom: 10px;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px; font-weight: bold;">Usuario:</label>
+                                <input type="text" id="register-username-input" class="glass-input" placeholder="Elige un usuario" style="width: 100%; box-sizing: border-box;" maxlength="15">
+                            </div>
+                            <div style="margin-bottom: 12px;">
+                                <label style="display:block; font-size:0.8rem; color:var(--text-muted); margin-bottom:4px; font-weight: bold;">Contraseña:</label>
+                                <input type="password" id="register-password-input" class="glass-input" placeholder="Elige una contraseña" style="width: 100%; box-sizing: border-box;">
+                            </div>
+                            <span id="register-error-msg" style="color: #ef4444; font-size: 0.8rem; display: block; margin-bottom: 8px;" class="hidden">El usuario ya existe.</span>
+                            <button id="btn-account-register" class="btn-success" style="padding: 8px 16px; border-radius: 8px; font-weight: bold; font-size: 0.9rem; cursor: pointer; border: none; width: 100%;">Crear Cuenta</button>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer" style="margin-top: 10px;">
                 <button id="btn-profile-save" class="btn-success">Guardar</button>
                 <button id="btn-profile-cancel" class="btn-primary">Cancelar</button>
             </div>
