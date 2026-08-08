@@ -180,7 +180,10 @@
         const encoded = encodeURIComponent(payload);
         const response = await fetch(
             `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LOBBY_APP_KEY}/${LOBBY_ROOMS_KEY}/${encoded}`,
-            { method: 'POST' }
+            { 
+                method: 'POST',
+                keepalive: true
+            }
         );
         if (!response.ok) throw new Error('UpdateValue HTTP ' + response.status);
         return list;
@@ -517,7 +520,10 @@
         const fullRoomId = 'NEONBEAT-' + roomCode;
 
         const peer = new Peer(fullRoomId, {
-            debug: 0,
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            debug: 1,
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -589,7 +595,10 @@
         if (btnJoinRoom) btnJoinRoom.disabled = true;
 
         const peer = new Peer(null, {
-            debug: 0,
+            host: '0.peerjs.com',
+            port: 443,
+            secure: true,
+            debug: 1,
             config: {
                 iceServers: [
                     { urls: 'stun:stun.l.google.com:19302' },
@@ -622,7 +631,11 @@
                 }
             }, 10000);
 
-            conn.on('open', () => { clearTimeout(timeout); });
+            if (conn.open) {
+                clearTimeout(timeout);
+            } else {
+                conn.on('open', () => { clearTimeout(timeout); });
+            }
             setupConnection(conn);
 
             // Redirect automatically to the autocharter/game screen to see loading/syncing
@@ -644,7 +657,7 @@
 
     // ===== COMMON CONNECTION SETUP =====
     function setupConnection(conn) {
-        conn.on('open', () => {
+        const handleOpen = () => {
             window.onlineMode.active = true;
 
             // Force disable Autoplay for Multiplayer
@@ -733,7 +746,13 @@
 
             // Resize to splitscreen
             if (window.resizeCanvas) window.resizeCanvas();
-        });
+        };
+
+        if (conn.open) {
+            handleOpen();
+        } else {
+            conn.on('open', handleOpen);
+        }
 
         conn.on('close', () => { handleDisconnection('El rival se desconectó'); });
         conn.on('error', (err) => {
@@ -1259,10 +1278,34 @@
     window.leaveRoom = leaveRoom;
     window.resetOnlineState = resetOnlineState;
 
+    function removeRoomFromLobbyUnload(code) {
+        if (!code) return;
+        stopLobbyHeartbeat();
+        try {
+            const now = Date.now();
+            const localRooms = getLocalPublicRooms().filter(r => r.code !== code && (now - r.created < ROOM_TTL_MS));
+            saveLocalPublicRooms(localRooms);
+
+            const payload = serializeRoomsForKv(localRooms) || 'EMPTY';
+            const encoded = encodeURIComponent(payload);
+            
+            // Use keepalive: true to ensure the browser completes the request after unload
+            fetch(
+                `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${LOBBY_APP_KEY}/${LOBBY_ROOMS_KEY}/${encoded}`,
+                { 
+                    method: 'POST',
+                    keepalive: true
+                }
+            ).catch(err => console.warn('[Lobby] Unload remove failed:', err));
+        } catch (e) {
+            console.error("[Lobby] Error in unload remove:", e);
+        }
+    }
+
     window.addEventListener('beforeunload', () => {
         if (window.onlineMode && window.onlineMode.roomId && window.onlineMode.role === 'host') {
             const roomCode = window.onlineMode.roomId.replace('NEONBEAT-', '');
-            removeRoomFromLobby(roomCode);
+            removeRoomFromLobbyUnload(roomCode);
         }
     });
 })();
