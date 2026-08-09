@@ -9756,80 +9756,24 @@ function calculatePoints(rank, totalNotes) {
     }
 }
 
-// ===== REMOTE DATABASE SYNC SYSTEM (KeyValue API Integration - Multi-Key Edition) =====
-const KV_APP_KEY = 'if0zmh0e';
-const USERNAMES_KEY = 'neonbeat_usernames_v1';
-
-async function kvGet(key) {
-    try {
-        const response = await fetch(
-            `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KV_APP_KEY}/${key}`,
-            { cache: 'no-store' }
-        );
-        if (!response.ok) throw new Error('kvGet HTTP ' + response.status);
-        const text = await response.text();
-        
-        let payload = text.trim();
-        const xmlMatch = payload.match(/<string[^>]*>([\s\S]*?)<\/string>/i);
-        if (xmlMatch) payload = xmlMatch[1].trim();
-        
-        payload = payload
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&');
-
-        if (!payload || payload === 'null' || payload === 'EMPTY') return null;
-        
-        if ((payload.startsWith('"') && payload.endsWith('"')) || (payload.startsWith("'") && payload.endsWith("'"))) {
-            payload = payload.slice(1, -1);
-        }
-        return payload;
-    } catch (e) {
-        console.error(`[NeonBeat DB] Error reading key ${key}:`, e);
-        return null;
-    }
-}
-
-async function kvSet(key, value) {
-    try {
-        const encoded = encodeURIComponent(value);
-        const response = await fetch(
-            `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KV_APP_KEY}/${key}/${encoded}`,
-            { method: 'POST' }
-        );
-        if (!response.ok) throw new Error('kvSet HTTP ' + response.status);
-        return true;
-    } catch (e) {
-        console.error(`[NeonBeat DB] Error setting key ${key}:`, e);
-        throw e;
-    }
-}
+// ===== REMOTE DATABASE SYNC SYSTEM (Node.js API Integration) =====
+const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
 
 async function fetchRemoteAccounts() {
     try {
-        const listStr = await kvGet(USERNAMES_KEY);
-        if (!listStr) return {};
+        const response = await fetch(`${API_BASE}/api/leaderboard`, { cache: 'no-store' });
+        if (!response.ok) throw new Error('leaderboard HTTP ' + response.status);
+        const players = await response.json();
         
-        const usernames = listStr.split(',').filter(Boolean);
         const accounts = {};
-        
-        // Fetch each user data in parallel
-        const userPromises = usernames.map(async (username) => {
-            try {
-                const dataStr = await kvGet(`nb_user_${username}`);
-                if (dataStr) {
-                    accounts[username] = JSON.parse(dataStr);
-                }
-            } catch (e) {
-                console.error('[NeonBeat DB] Error loading user ' + username, e);
-            }
+        players.forEach(p => {
+            accounts[p.username] = {
+                points: p.points,
+                avatar: p.avatar,
+                avatarType: p.avatarType
+            };
         });
         
-        await Promise.all(userPromises);
-        
-        // Cache in localstorage as fallback
         localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
         return accounts;
     } catch (e) {
@@ -9839,75 +9783,48 @@ async function fetchRemoteAccounts() {
 }
 
 async function registerRemoteUser(username, password) {
-    const listStr = await kvGet(USERNAMES_KEY) || '';
-    const usernames = listStr.split(',').filter(Boolean);
-    
-    if (usernames.includes(username)) {
-        return { success: false, error: 'El nombre de usuario ya está registrado' };
+    const response = await fetch(`${API_BASE}/api/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    if (!response.ok) {
+        const errData = await response.json();
+        return { success: false, error: errData.error || 'Registration failed' };
     }
-    
-    const userData = {
-        password: password,
-        points: 0,
-        avatar: '🎮',
-        avatarType: 'emoji'
-    };
-    
-    // Save user details
-    await kvSet(`nb_user_${username}`, JSON.stringify(userData));
-    
-    // Update master list of usernames
-    usernames.push(username);
-    await kvSet(USERNAMES_KEY, usernames.join(','));
-    
-    // Update local cache
-    const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
-    cached[username] = userData;
-    localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
-    
     return { success: true };
 }
 
 async function loginRemoteUser(username, password) {
-    const dataStr = await kvGet(`nb_user_${username}`);
-    if (!dataStr) return { success: false, error: 'El nombre de usuario no existe' };
-    
-    const userData = JSON.parse(dataStr);
-    if (userData.password !== password) {
-        return { success: false, error: 'Contraseña incorrecta' };
+    const response = await fetch(`${API_BASE}/api/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+    });
+    if (!response.ok) {
+        const errData = await response.json();
+        return { success: false, error: errData.error || 'Login failed' };
     }
-    
-    // Update local cache
-    const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
-    cached[username] = userData;
-    localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
-    
-    return { success: true, userData };
+    const resData = await response.json();
+    return { success: true, userData: resData.userData };
 }
 
 async function updateRemoteUser(username, pointsDelta, avatar, avatarType) {
     try {
-        const dataStr = await kvGet(`nb_user_${username}`);
-        if (!dataStr) return false;
-        
-        const userData = JSON.parse(dataStr);
-        if (pointsDelta !== null) {
-            userData.points = (userData.points || 0) + pointsDelta;
+        if (pointsDelta !== null && pointsDelta !== 0) {
+            await fetch(`${API_BASE}/api/add-points`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, points: pointsDelta })
+            });
         }
-        if (avatar !== null) {
-            userData.avatar = avatar;
+        if (avatar !== null || avatarType !== null) {
+            await fetch(`${API_BASE}/api/update-profile`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, avatar, avatarType })
+            });
         }
-        if (avatarType !== null) {
-            userData.avatarType = avatarType;
-        }
-        
-        await kvSet(`nb_user_${username}`, JSON.stringify(userData));
-        
-        // Update local cache
-        const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
-        cached[username] = userData;
-        localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
-        
         return true;
     } catch (e) {
         console.error('[NeonBeat DB] Error updating remote user:', e);
@@ -9921,14 +9838,8 @@ function addPlayerPoints(pts) {
     
     if (currentUser) {
         // 1. Sync remote points in background
-        fetchRemoteAccounts().then(accounts => {
-            if (accounts[currentUser]) {
-                accounts[currentUser].points = (accounts[currentUser].points || 0) + pts;
-                newPoints = accounts[currentUser].points;
-                pushRemoteAccounts(accounts).then(() => {
-                    refreshProfileUI();
-                });
-            }
+        updateRemoteUser(currentUser, pts, null, null).then(() => {
+            refreshProfileUI();
         }).catch(err => {
             console.error('Failed to sync remote points:', err);
         });
@@ -10156,6 +10067,10 @@ function saveProfile(name, avatar, avatarType) {
             accounts[currentUser].avatarType = avatarType;
             localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
         }
+        // Async background remote avatar update
+        updateRemoteUser(currentUser, null, avatar, avatarType).then(() => {
+            refreshProfileUI();
+        });
     } else {
         // Save to guest profile
         localStorage.setItem('neonbeat-username', name);
