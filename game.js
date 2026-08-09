@@ -11016,10 +11016,9 @@ function initAccountSystem() {
             btnLogin.innerText = 'Verificando...';
 
             try {
-                const accounts = await fetchRemoteAccounts();
-                const acc = accounts[username];
+                const res = await loginRemoteUser(username, password);
 
-                if (acc && acc.password === password) {
+                if (res.success) {
                     localStorage.setItem('neonbeat-current-user', username);
                     loginUser.value = '';
                     loginPass.value = '';
@@ -11027,7 +11026,7 @@ function initAccountSystem() {
                     refreshProfileUI();
                 } else {
                     if (loginError) {
-                        loginError.innerText = 'Usuario o contraseña incorrectos';
+                        loginError.innerText = res.error || 'Usuario o contraseña incorrectos';
                         loginError.classList.remove('hidden');
                     }
                 }
@@ -11056,24 +11055,15 @@ function initAccountSystem() {
             btnRegister.innerText = 'Registrando...';
 
             try {
-                const accounts = await fetchRemoteAccounts();
+                const res = await registerRemoteUser(username, password);
                 
-                if (accounts[username]) {
+                if (!res.success) {
                     if (registerError) {
-                        registerError.innerText = 'El nombre de usuario ya está registrado';
+                        registerError.innerText = res.error || 'Error al registrar';
                         registerError.classList.remove('hidden');
                     }
                 } else {
-                    // Register account
-                    accounts[username] = {
-                        password: password,
-                        points: 0,
-                        avatar: '🎮',
-                        avatarType: 'emoji'
-                    };
-                    await pushRemoteAccounts(accounts);
                     localStorage.setItem('neonbeat-current-user', username);
-                    
                     registerUser.value = '';
                     registerPass.value = '';
                     if (registerError) registerError.classList.add('hidden');

@@ -1,0 +1,13 @@
+{
+  "name": "autocharter",
+  "version": "1.0.0",
+  "description": "Servidor de cuentas y leaderboard para NeonBeat",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}
