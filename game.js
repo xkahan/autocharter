@@ -9823,7 +9823,18 @@ function refreshLeaderboardUI() {
     const mainMenuList = document.getElementById('main-menu-leaderboard-list');
     if (!modalList && !pageList && !mainMenuList) return;
 
-    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+    let accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || 'null');
+    if (!accounts || Object.keys(accounts).length === 0) {
+        // Semilla de cuentas de prueba por defecto para poblar la clasificación al publicar
+        accounts = {
+            "BeastMode": { password: "123", points: 52000, avatar: "⚡", avatarType: "emoji" },
+            "RhythmQueen": { password: "123", points: 28500, avatar: "🎧", avatarType: "emoji" },
+            "xkahan": { password: "123", points: 15400, avatar: "🎮", avatarType: "emoji" },
+            "NeonBeat": { password: "123", points: 8200, avatar: "🔥", avatarType: "emoji" },
+            "GuestOne": { password: "123", points: 4100, avatar: "🐱", avatarType: "emoji" }
+        };
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+    }
     const players = Object.entries(accounts).map(([username, data]) => ({
         username,
         points: data.points || 0,
