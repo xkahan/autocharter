@@ -45,20 +45,26 @@
                         <button class="menu-nav-btn" onclick="showScreen('online-lobby'); if (window.switchLobbyTab) window.switchLobbyTab('online');">Online Playing</button>
                         <button class="menu-nav-btn" onclick="showScreen('settings')">Settings</button>
                     </div>
-                    <!-- Right: Profile Info Card -->
-                    <div class="main-menu-right" id="menu-profile-card">
-                        <div class="profile-pic-container">
-                            <img id="menu-profile-pic" src="" alt="Avatar" class="profile-pic hidden">
-                            <span id="menu-profile-pic-fallback" class="profile-pic-fallback">🎮</span>
-                        </div>
-                        <div class="profile-info">
-                            <span id="menu-profile-name" class="profile-name">Cargando...</span>
-                            <div class="profile-tier-container" style="margin-top: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
-                                <span id="menu-profile-tier" style="font-size: 0.85rem; font-weight: 800; color: var(--primary); letter-spacing: 0.5px; text-transform: uppercase;">Invitado</span>
-                                <span id="menu-profile-points" style="font-size: 0.75rem; color: var(--text-muted);">Puntos: 0</span>
+                    <!-- Right Column: Profile & Leaderboard -->
+                    <div class="main-menu-right-col">
+                        <!-- Profile Card -->
+                        <div class="main-menu-right" id="menu-profile-card">
+                            <div class="profile-pic-container">
+                                <img id="menu-profile-pic" src="" alt="Avatar" class="profile-pic hidden">
+                                <span id="menu-profile-pic-fallback" class="profile-pic-fallback">🎮</span>
                             </div>
-                            <span class="profile-edit-hint" style="margin-top: 6px;">Click para editar perfil y cuenta</span>
+                            <div class="profile-info">
+                                <span id="menu-profile-name" class="profile-name">Cargando...</span>
+                                <div class="profile-tier-container" style="margin-top: 3px; display: flex; flex-direction: column; align-items: flex-start; gap: 2px;">
+                                    <span id="menu-profile-tier" style="font-size: 0.85rem; font-weight: 800; color: var(--primary); letter-spacing: 0.5px; text-transform: uppercase;">Invitado</span>
+                                    <span id="menu-profile-points" style="font-size: 0.75rem; color: var(--text-muted);">Puntos: 0</span>
+                                </div>
+                                <span class="profile-edit-hint" style="margin-top: 6px;">Click para editar perfil y cuenta</span>
+                            </div>
                         </div>
+
+                        <!-- Leaderboards Button -->
+                        <button class="menu-nav-btn" onclick="showScreen('leaderboards')" style="width: 100%; max-width: 100%; margin: 10px 0 0 0; text-align: center;">Leaderboards</button>
                     </div>
                 </div>
             </div>
@@ -194,6 +200,23 @@
                                 📺 Pantalla Completa
                             </button>
                         </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. PANTALLA DE LEADERBOARDS -->
+    <div id="leaderboards-screen" class="menu-screen hidden">
+        <div class="menu-window-wrapper">
+            <div class="menu-window settings-window" style="width: 600px; max-height: 90vh;">
+                <div class="settings-header" style="justify-content: flex-start; gap: 20px;">
+                    <button class="btn-settings-back" onclick="showScreen('main-menu')">Regresar</button>
+                    <h2 style="font-size: 1.5rem; color: var(--primary); margin: 0; font-weight: 800; text-transform: uppercase; letter-spacing: 1px;">Leaderboards</h2>
+                </div>
+                <div class="settings-body" style="padding: 10px 0; overflow-y: auto; max-height: 65vh;">
+                    <div id="leaderboard-page-list" style="display: flex; flex-direction: column; gap: 12px; padding: 5px;">
+                        <!-- Cuentas registradas se cargarán dinámicamente -->
                     </div>
                 </div>
             </div>
@@ -353,6 +376,14 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Section 3: Leaderboard -->
+                <div class="profile-section-card" id="leaderboard-section-card" style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; gap: 10px;">
+                    <h3 style="font-size: 1.1rem; color: var(--primary); margin: 0; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">Tabla de Clasificación</h3>
+                    <div id="leaderboard-list" style="display: flex; flex-direction: column; gap: 8px; max-height: 180px; overflow-y: auto; padding-right: 5px;">
+                        <!-- Cuentas registradas se cargarán dinámicamente -->
+                    </div>
+                </div>
             </div>
             <div class="modal-footer" style="margin-top: 10px;">
                 <button id="btn-profile-save" class="btn-success">Guardar</button>
@@ -504,9 +535,12 @@
                             style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary);">
                     </div>
 
-                    <div
+                    <div title="El modo Autoplay no otorga puntos en el ranking"
                         style="display: flex; justify-content: space-between; align-items: center; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 8px; margin-top: 15px;">
-                        <span style="font-size: 0.85rem; font-weight: 600;">Auto-Play (Playtest Mod)</span>
+                        <div style="display: flex; flex-direction: column;">
+                            <span style="font-size: 0.85rem; font-weight: 600;">Auto-Play (Playtest Mod)</span>
+                            <span style="font-size: 0.7rem; color: var(--text-muted); margin-top: 2px;">No otorga puntos en el ranking</span>
+                        </div>
                         <input type="checkbox" id="autoplay-toggle"
                             style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--success);">
                     </div>

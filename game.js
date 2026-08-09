@@ -129,6 +129,7 @@ window.isPlaying = false;
 window.isPaused = false;
 window.isGameOver = false;
 let isAutoPlay = false;
+let autoplayUsedThisSession = false; // Tracks if autoplay was active at any point during a song run
 let startTime = 0;
 let audioSourceNode = null;
 let score = 0;
@@ -882,6 +883,9 @@ if (visualizerToggle) {
 if (autoPlayToggle) {
     autoPlayToggle.addEventListener('change', e => {
         isAutoPlay = e.target.checked;
+        if (isAutoPlay && window.isPlaying) {
+            autoplayUsedThisSession = true;
+        }
         saveSettings();
     });
 }
@@ -3105,6 +3109,7 @@ window.startGameplay = async function (customStartTimeDelay = 0) {
     score = 0;
     combo = 0;
     health = 50;
+    autoplayUsedThisSession = isAutoPlay;
 
     toggleModesEnabled(false);
     window.isPaused = false;
@@ -4022,7 +4027,75 @@ function showResults() {
     }
 
     // Calculate and apply points
-    const earnedPoints = calculatePoints(rank, totalNotes);
+    const hasFailed = health <= 0 || (window.localMode && window.localMode.active && window.localMode.p1Died) || (window.onlineMode && window.onlineMode.active && window.onlineMode.localDied);
+    const usedAutoplay = isAutoPlay || autoplayUsedThisSession;
+
+    let mult = 1.0;
+    let heavenActive = false;
+    if (activeModes.easier || activeModes.nodeath || activeModes.slowdown) {
+        mult = 0.0;
+        heavenActive = true;
+    } else {
+        if (activeModes.harder) mult += 0.05;
+        if (activeModes.healthdrain) mult += 0.08;
+        if (activeModes.speedup) mult += 0.10;
+        if (activeModes.nono) mult += 0.20;
+        if (activeModes.untouchable) mult += 0.12;
+        if (activeModes.internet) mult += 0.30;
+        if (activeModes.double) mult += 0.70;
+        if (activeModes.swapinout) mult += 0.10;
+        if (activeModes.laser) mult += 0.14;
+        if (activeModes.wannacry) mult += 1.20;
+    }
+
+    let earnedPoints = 0;
+    let pointsDisplayHTML = '';
+
+    if (usedAutoplay) {
+        earnedPoints = 0;
+        pointsDisplayHTML = `
+            <strong style="font-size: 1.2rem; color: #9ca3af; display: block; margin: 4px 0;">
+                0 PTS (AUTOPLAY)
+            </strong>
+            <span style="font-size: 0.75rem; color: #ef4444; display: block; margin-top: 2px;">
+                El modo Autoplay no otorga puntos
+            </span>
+        `;
+    } else if (hasFailed) {
+        earnedPoints = 0;
+        pointsDisplayHTML = `
+            <strong style="font-size: 1.2rem; color: #ef4444; display: block; margin: 4px 0;">
+                0 PTS (FALLIDO)
+            </strong>
+            <span style="font-size: 0.75rem; color: #ef4444; display: block; margin-top: 2px;">
+                No se otorgan puntos al morir
+            </span>
+        `;
+    } else if (heavenActive) {
+        earnedPoints = 0;
+        pointsDisplayHTML = `
+            <strong style="font-size: 1.2rem; color: #3b82f6; display: block; margin: 4px 0;">
+                0 PTS (HEAVEN)
+            </strong>
+            <span style="font-size: 0.75rem; color: #9ca3af; display: block; margin-top: 2px;">
+                Los modos Heaven no otorgan puntos
+            </span>
+        `;
+    } else {
+        const basePoints = calculatePoints(rank, totalNotes);
+        earnedPoints = Math.round(basePoints * mult);
+        pointsDisplayHTML = `
+            <strong style="font-size: 1.35rem; color: ${earnedPoints >= 0 ? '#10b981' : '#ef4444'};">
+                ${earnedPoints >= 0 ? '+' : ''}${earnedPoints} PTS
+            </strong>
+            ${mult !== 1.0 ? `
+            <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 2px;">
+                Multiplicador: x${mult.toFixed(2)}
+            </span>
+            ` : ''}
+        `;
+    }
+
     const updatedPointsInfo = addPlayerPoints(earnedPoints);
 
     // Default Singleplayer Results Content
@@ -4051,9 +4124,7 @@ function showResults() {
             </div>
             <div class="results-points-display" style="text-align: center; margin: 15px 0 5px 0; padding: 12px; background: rgba(0, 0, 0, 0.25); border-radius: 12px; border: 1px solid rgba(255,255,255,0.05);">
                 <span style="font-size: 0.8rem; color: var(--text-muted); display: block; text-transform: uppercase; letter-spacing: 0.5px;">Evolución de Puntos</span>
-                <strong style="font-size: 1.35rem; color: ${earnedPoints >= 0 ? '#10b981' : '#ef4444'};">
-                    ${earnedPoints >= 0 ? '+' : ''}${earnedPoints} PTS
-                </strong>
+                ${pointsDisplayHTML}
                 <span style="font-size: 0.85rem; color: var(--text-muted); display: block; margin-top: 3px;">
                     Total actual: <strong style="color: #fff;">${updatedPointsInfo.total} pts</strong> (<span style="color: var(--primary); font-weight: bold;">${getTierName(updatedPointsInfo.total)}</span>)
                 </span>
@@ -9567,11 +9638,13 @@ function changeActualScreen(screenName) {
     const mainMenu = document.getElementById('main-menu-screen');
     const settingsScreen = document.getElementById('settings-screen');
     const onlineLobby = document.getElementById('online-lobby-screen');
+    const leaderboardsScreen = document.getElementById('leaderboards-screen');
     const appContainer = document.querySelector('.app-container');
 
     if (mainMenu) mainMenu.classList.add('hidden');
     if (settingsScreen) settingsScreen.classList.add('hidden');
     if (onlineLobby) onlineLobby.classList.add('hidden');
+    if (leaderboardsScreen) leaderboardsScreen.classList.add('hidden');
     if (appContainer) appContainer.classList.add('hidden');
 
     // Toggle expensive backdrop blurs while in-game for better FPS
@@ -9593,6 +9666,9 @@ function changeActualScreen(screenName) {
     } else if (screenName === 'settings') {
         if (settingsScreen) settingsScreen.classList.remove('hidden');
         initSettingsTabValues();
+    } else if (screenName === 'leaderboards') {
+        if (leaderboardsScreen) leaderboardsScreen.classList.remove('hidden');
+        refreshLeaderboardUI();
     } else if (screenName === 'online-lobby') {
         if (onlineLobby) onlineLobby.classList.remove('hidden');
         if (typeof window.refreshRoomsLobby === 'function') {
@@ -9731,6 +9807,161 @@ function updateModalAccountView() {
     }
 }
 
+function getTierColor(points) {
+    if (points >= 50000) return '#c084fc'; // LUNARIUM - Purple/light violet
+    if (points >= 25000) return '#f59e0b'; // SOLARIUM - Amber/Orange
+    if (points >= 10000) return '#10b981'; // Emerald - Emerald Green
+    if (points >= 8000) return '#38bdf8'; // Diamond - Light Blue
+    if (points >= 7000) return '#94a3b8'; // Steel - Slate/Grey
+    if (points >= 4000) return '#b45309'; // Bronze - Brown/Bronze
+    return '#6b7280'; // Dirt - Grey
+}
+
+function refreshLeaderboardUI() {
+    const modalList = document.getElementById('leaderboard-list');
+    const pageList = document.getElementById('leaderboard-page-list');
+    const mainMenuList = document.getElementById('main-menu-leaderboard-list');
+    if (!modalList && !pageList && !mainMenuList) return;
+
+    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+    const players = Object.entries(accounts).map(([username, data]) => ({
+        username,
+        points: data.points || 0,
+        avatar: data.avatar || '🎮',
+        avatarType: data.avatarType || 'emoji'
+    }));
+
+    // Sort descending by points
+    players.sort((a, b) => b.points - a.points);
+
+    // 1. Render in profile edit modal (smaller card style)
+    if (modalList) {
+        modalList.innerHTML = '';
+        if (players.length === 0) {
+            modalList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 15px 0;">No hay cuentas registradas aún.</div>`;
+        } else {
+            players.forEach((player, index) => {
+                let rankSymbol = `#${index + 1}`;
+                let rankColor = 'var(--text-muted)';
+                if (index === 0) { rankSymbol = '🥇'; rankColor = '#fbbf24'; }
+                else if (index === 1) { rankSymbol = '🥈'; rankColor = '#cbd5e1'; }
+                else if (index === 2) { rankSymbol = '🥉'; rankColor = '#b45309'; }
+
+                const avatarHTML = player.avatarType === 'image'
+                    ? `<img src="${player.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                    : player.avatar;
+
+                const tierName = getTierName(player.points);
+                const tierColor = getTierColor(player.points);
+
+                const row = document.createElement('div');
+                row.className = 'leaderboard-row';
+                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.03); padding: 8px 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.02); transition: transform 0.2s;';
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span style="font-weight: 800; font-size: 0.95rem; min-width: 22px; text-align: center; color: ${rankColor};">${rankSymbol}</span>
+                        <span style="font-size: 1.1rem; width: 24px; height: 24px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 50%; overflow: hidden;">${avatarHTML}</span>
+                        <span style="font-weight: bold; font-size: 0.9rem; color: #fff;">${player.username}</span>
+                    </div>
+                    <div style="text-align: right; display: flex; flex-direction: column; align-items: flex-end;">
+                        <span style="font-size: 0.8rem; font-weight: 800; color: ${tierColor}; text-transform: uppercase; letter-spacing: 0.5px;">${tierName}</span>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">${player.points} pts</span>
+                    </div>
+                `;
+                modalList.appendChild(row);
+            });
+        }
+    }
+
+    // 2. Render in main dedicated page (matching the layout mockup diagram exactly)
+    if (pageList) {
+        pageList.innerHTML = '';
+        if (players.length === 0) {
+            pageList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1rem; padding: 40px 0;">No hay cuentas registradas aún.</div>`;
+        } else {
+            players.forEach((player, index) => {
+                let rankSymbol = `#${index + 1}`;
+                let rankColor = '#cbd5e1';
+                if (index === 0) { rankSymbol = '🥇'; rankColor = '#fbbf24'; }
+                else if (index === 1) { rankSymbol = '🥈'; rankColor = '#cbd5e1'; }
+                else if (index === 2) { rankSymbol = '🥉'; rankColor = '#b45309'; }
+
+                const avatarHTML = player.avatarType === 'image'
+                    ? `<img src="${player.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                    : `<span style="font-size: 1.6rem; line-height: 1;">${player.avatar}</span>`;
+
+                const tierName = getTierName(player.points);
+                const tierColor = getTierColor(player.points);
+
+                const row = document.createElement('div');
+                row.className = 'leaderboard-row';
+                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(0, 0, 0, 0.25); border: 1.5px solid rgba(255, 255, 255, 0.05); padding: 12px 18px; border-radius: 12px; transition: transform 0.2s;';
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <!-- PFP (far left) -->
+                        <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(255,255,255,0.05); border: 2px solid rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; overflow: hidden; flex-shrink: 0;">
+                            ${avatarHTML}
+                        </div>
+                        <!-- Player Name & RANGO (vertical list) -->
+                        <div style="display: flex; flex-direction: column; text-align: left; gap: 2px;">
+                            <span style="font-size: 1.25rem; font-weight: 700; color: #fff; line-height: 1.2;">${player.username}</span>
+                            <span style="font-size: 0.85rem; font-weight: 800; color: ${tierColor}; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">${tierName}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 25px;">
+                        <!-- points (left of position) -->
+                        <span style="font-size: 1.15rem; font-weight: 700; color: var(--primary);">${player.points} pts</span>
+                        <!-- position (far right) -->
+                        <span style="font-weight: 900; font-size: 1.4rem; min-width: 32px; text-align: right; color: ${rankColor};">${rankSymbol}</span>
+                    </div>
+                `;
+                pageList.appendChild(row);
+            });
+        }
+    }
+
+    // 3. Render in main menu right column (under user profile card)
+    if (mainMenuList) {
+        mainMenuList.innerHTML = '';
+        if (players.length === 0) {
+            mainMenuList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 15px 0;">No hay cuentas registradas.</div>`;
+        } else {
+            players.forEach((player, index) => {
+                let rankSymbol = `#${index + 1}`;
+                let rankColor = 'var(--text-muted)';
+                if (index === 0) { rankSymbol = '🥇'; rankColor = '#fbbf24'; }
+                else if (index === 1) { rankSymbol = '🥈'; rankColor = '#cbd5e1'; }
+                else if (index === 2) { rankSymbol = '🥉'; rankColor = '#b45309'; }
+
+                const avatarHTML = player.avatarType === 'image'
+                    ? `<img src="${player.avatar}" style="width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+                    : player.avatar;
+
+                const tierName = getTierName(player.points);
+                const tierColor = getTierColor(player.points);
+
+                const row = document.createElement('div');
+                row.className = 'leaderboard-row';
+                row.style.cssText = 'display: flex; align-items: center; justify-content: space-between; background: rgba(255, 255, 255, 0.03); padding: 8px 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.02); transition: transform 0.2s;';
+                row.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <span style="font-size: 1.1rem; width: 22px; height: 22px; display: inline-flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.05); border-radius: 50%; overflow: hidden;">${avatarHTML}</span>
+                        <div style="display: flex; flex-direction: column; text-align: left;">
+                            <span style="font-weight: bold; font-size: 0.85rem; color: #fff; line-height: 1.1;">${player.username}</span>
+                            <span style="font-size: 0.7rem; font-weight: 800; color: ${tierColor}; text-transform: uppercase; letter-spacing: 0.5px;">${tierName}</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <span style="font-size: 0.8rem; font-weight: 700; color: var(--primary);">${player.points} pts</span>
+                        <span style="font-weight: 800; font-size: 1rem; min-width: 18px; text-align: center; color: ${rankColor};">${rankSymbol}</span>
+                    </div>
+                `;
+                mainMenuList.appendChild(row);
+            });
+        }
+    }
+}
+
 function saveProfile(name, avatar, avatarType) {
     const currentUser = localStorage.getItem('neonbeat-current-user');
     if (currentUser) {
@@ -9821,6 +10052,7 @@ function refreshProfileUI() {
 
     // Update account view in modal if it is loaded
     updateModalAccountView();
+    refreshLeaderboardUI();
 }
 
 // Edit Profile Modal Wiring
