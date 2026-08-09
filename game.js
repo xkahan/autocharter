@@ -9823,18 +9823,7 @@ function refreshLeaderboardUI() {
     const mainMenuList = document.getElementById('main-menu-leaderboard-list');
     if (!modalList && !pageList && !mainMenuList) return;
 
-    let accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || 'null');
-    if (!accounts || Object.keys(accounts).length === 0) {
-        // Semilla de cuentas de prueba por defecto para poblar la clasificación al publicar
-        accounts = {
-            "BeastMode": { password: "123", points: 52000, avatar: "⚡", avatarType: "emoji" },
-            "RhythmQueen": { password: "123", points: 28500, avatar: "🎧", avatarType: "emoji" },
-            "xkahan": { password: "123", points: 15400, avatar: "🎮", avatarType: "emoji" },
-            "NeonBeat": { password: "123", points: 8200, avatar: "🔥", avatarType: "emoji" },
-            "GuestOne": { password: "123", points: 4100, avatar: "🐱", avatarType: "emoji" }
-        };
-        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
-    }
+    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
     const players = Object.entries(accounts).map(([username, data]) => ({
         username,
         points: data.points || 0,
@@ -9849,7 +9838,7 @@ function refreshLeaderboardUI() {
     if (modalList) {
         modalList.innerHTML = '';
         if (players.length === 0) {
-            modalList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 15px 0;">No hay cuentas registradas aún.</div>`;
+            modalList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; padding: 15px 0;">No hay cuentas registradas.</div>`;
         } else {
             players.forEach((player, index) => {
                 let rankSymbol = `#${index + 1}`;
@@ -9888,7 +9877,7 @@ function refreshLeaderboardUI() {
     if (pageList) {
         pageList.innerHTML = '';
         if (players.length === 0) {
-            pageList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1rem; padding: 40px 0;">No hay cuentas registradas aún.</div>`;
+            pageList.innerHTML = `<div style="text-align: center; color: var(--text-muted); font-size: 1.1rem; padding: 50px 20px; line-height: 1.6;">No hay cuentas registradas.<br><span style="font-size: 0.9rem; opacity: 0.8;">Crea una cuenta en el menú de perfil para aparecer en la clasificación.</span></div>`;
         } else {
             players.forEach((player, index) => {
                 let rankSymbol = `#${index + 1}`;
