@@ -9756,47 +9756,23 @@ function calculatePoints(rank, totalNotes) {
     }
 }
 
-// ===== REMOTE DATABASE SYNC SYSTEM (KeyValue API Integration) =====
-const ACCOUNTS_KV_KEY = 'neonbeat_accounts';
-const KV_APP_KEY = 'if0zmh0e';
+// ===== REMOTE DATABASE SYNC SYSTEM (KVdb.io Integration) =====
+// Using a unique 20-character public bucket ID to store accounts as a single JSON object.
+const DB_URL = 'https://kvdb.io/neonbeat_accounts_db/accounts';
 
 async function fetchRemoteAccounts() {
     try {
-        const response = await fetch(
-            `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KV_APP_KEY}/${ACCOUNTS_KV_KEY}`,
-            { cache: 'no-store' }
-        );
-        if (!response.ok) throw new Error('GetValue HTTP ' + response.status);
-        const text = await response.text();
-        
-        let payload = text.trim();
-        const xmlMatch = payload.match(/<string[^>]*>([\s\S]*?)<\/string>/i);
-        if (xmlMatch) payload = xmlMatch[1].trim();
-        
-        payload = payload
-            .replace(/&quot;/g, '"')
-            .replace(/&#39;/g, "'")
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&amp;/g, '&');
-
-        if (!payload || payload === 'null' || payload === 'EMPTY' || payload === '[]') return {};
-        
-        if ((payload.startsWith('"') && payload.endsWith('"')) || (payload.startsWith("'") && payload.endsWith("'"))) {
-            payload = payload.slice(1, -1);
+        const response = await fetch(DB_URL, { cache: 'no-store' });
+        if (response.status === 404) {
+            // No se ha creado la base de datos remota aún
+            return {};
         }
+        if (!response.ok) throw new Error('GET HTTP ' + response.status);
+        const accounts = await response.json();
         
-        // URL safe base64 decode
-        let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
-        while (base64.length % 4) {
-            base64 += '=';
-        }
-        const decodedStr = decodeURIComponent(escape(atob(base64)));
-        const accounts = JSON.parse(decodedStr);
-        
-        // Cache in localstorage as fallback
+        // Cache locally as fallback
         localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
-        return accounts;
+        return accounts || {};
     } catch (e) {
         console.error('[NeonBeat DB] Error fetching remote accounts:', e);
         return JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
@@ -9805,16 +9781,14 @@ async function fetchRemoteAccounts() {
 
 async function pushRemoteAccounts(accounts) {
     try {
-        const jsonStr = JSON.stringify(accounts);
-        const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
-        const payload = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-        const encoded = encodeURIComponent(payload);
-        
-        const response = await fetch(
-            `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KV_APP_KEY}/${ACCOUNTS_KV_KEY}/${encoded}`,
-            { method: 'POST' }
-        );
-        if (!response.ok) throw new Error('UpdateValue HTTP ' + response.status);
+        const response = await fetch(DB_URL, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(accounts)
+        });
+        if (!response.ok) throw new Error('PUT HTTP ' + response.status);
         
         localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
         return true;
