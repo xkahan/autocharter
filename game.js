@@ -9789,7 +9789,7 @@ function calculatePoints(rank, totalNotes) {
 }
 
 // ===== REMOTE DATABASE SYNC SYSTEM (Node.js API Integration) =====
-const API_BASE = window.location.protocol === 'file:' ? 'http://localhost:3000' : '';
+const API_BASE = (window.location.protocol === 'file:' || (window.location.port !== '3000' && window.location.port !== '')) ? 'http://localhost:3000' : '';
 
 async function fetchRemoteAccounts() {
     try {
@@ -9797,12 +9797,15 @@ async function fetchRemoteAccounts() {
         if (!response.ok) throw new Error('leaderboard HTTP ' + response.status);
         const players = await response.json();
         
-        const accounts = {};
+        // Load existing local accounts first to merge points
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+        
         players.forEach(p => {
+            const localPlayer = accounts[p.username] || {};
             accounts[p.username] = {
-                points: p.points,
-                avatar: p.avatar,
-                avatarType: p.avatarType
+                points: Math.max(localPlayer.points || 0, p.points || 0),
+                avatar: p.avatar || localPlayer.avatar || '🎮',
+                avatarType: p.avatarType || localPlayer.avatarType || 'emoji'
             };
         });
         
