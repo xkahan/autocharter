@@ -9756,44 +9756,161 @@ function calculatePoints(rank, totalNotes) {
     }
 }
 
-// ===== REMOTE DATABASE SYNC SYSTEM (KVdb.io Integration) =====
-// Using a unique 20-character public bucket ID to store accounts as a single JSON object.
-const DB_URL = 'https://kvdb.io/neonbeat_accounts_db/accounts';
+// ===== REMOTE DATABASE SYNC SYSTEM (KeyValue API Integration - Multi-Key Edition) =====
+const KV_APP_KEY = 'if0zmh0e';
+const USERNAMES_KEY = 'neonbeat_usernames_v1';
+
+async function kvGet(key) {
+    try {
+        const response = await fetch(
+            `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KV_APP_KEY}/${key}`,
+            { cache: 'no-store' }
+        );
+        if (!response.ok) throw new Error('kvGet HTTP ' + response.status);
+        const text = await response.text();
+        
+        let payload = text.trim();
+        const xmlMatch = payload.match(/<string[^>]*>([\s\S]*?)<\/string>/i);
+        if (xmlMatch) payload = xmlMatch[1].trim();
+        
+        payload = payload
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
+
+        if (!payload || payload === 'null' || payload === 'EMPTY') return null;
+        
+        if ((payload.startsWith('"') && payload.endsWith('"')) || (payload.startsWith("'") && payload.endsWith("'"))) {
+            payload = payload.slice(1, -1);
+        }
+        return payload;
+    } catch (e) {
+        console.error(`[NeonBeat DB] Error reading key ${key}:`, e);
+        return null;
+    }
+}
+
+async function kvSet(key, value) {
+    try {
+        const encoded = encodeURIComponent(value);
+        const response = await fetch(
+            `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KV_APP_KEY}/${key}/${encoded}`,
+            { method: 'POST' }
+        );
+        if (!response.ok) throw new Error('kvSet HTTP ' + response.status);
+        return true;
+    } catch (e) {
+        console.error(`[NeonBeat DB] Error setting key ${key}:`, e);
+        throw e;
+    }
+}
 
 async function fetchRemoteAccounts() {
     try {
-        const response = await fetch(DB_URL, { cache: 'no-store' });
-        if (response.status === 404) {
-            // No se ha creado la base de datos remota aún
-            return {};
-        }
-        if (!response.ok) throw new Error('GET HTTP ' + response.status);
-        const accounts = await response.json();
+        const listStr = await kvGet(USERNAMES_KEY);
+        if (!listStr) return {};
         
-        // Cache locally as fallback
+        const usernames = listStr.split(',').filter(Boolean);
+        const accounts = {};
+        
+        // Fetch each user data in parallel
+        const userPromises = usernames.map(async (username) => {
+            try {
+                const dataStr = await kvGet(`nb_user_${username}`);
+                if (dataStr) {
+                    accounts[username] = JSON.parse(dataStr);
+                }
+            } catch (e) {
+                console.error('[NeonBeat DB] Error loading user ' + username, e);
+            }
+        });
+        
+        await Promise.all(userPromises);
+        
+        // Cache in localstorage as fallback
         localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
-        return accounts || {};
+        return accounts;
     } catch (e) {
         console.error('[NeonBeat DB] Error fetching remote accounts:', e);
         return JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
     }
 }
 
-async function pushRemoteAccounts(accounts) {
+async function registerRemoteUser(username, password) {
+    const listStr = await kvGet(USERNAMES_KEY) || '';
+    const usernames = listStr.split(',').filter(Boolean);
+    
+    if (usernames.includes(username)) {
+        return { success: false, error: 'El nombre de usuario ya está registrado' };
+    }
+    
+    const userData = {
+        password: password,
+        points: 0,
+        avatar: '🎮',
+        avatarType: 'emoji'
+    };
+    
+    // Save user details
+    await kvSet(`nb_user_${username}`, JSON.stringify(userData));
+    
+    // Update master list of usernames
+    usernames.push(username);
+    await kvSet(USERNAMES_KEY, usernames.join(','));
+    
+    // Update local cache
+    const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+    cached[username] = userData;
+    localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
+    
+    return { success: true };
+}
+
+async function loginRemoteUser(username, password) {
+    const dataStr = await kvGet(`nb_user_${username}`);
+    if (!dataStr) return { success: false, error: 'El nombre de usuario no existe' };
+    
+    const userData = JSON.parse(dataStr);
+    if (userData.password !== password) {
+        return { success: false, error: 'Contraseña incorrecta' };
+    }
+    
+    // Update local cache
+    const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+    cached[username] = userData;
+    localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
+    
+    return { success: true, userData };
+}
+
+async function updateRemoteUser(username, pointsDelta, avatar, avatarType) {
     try {
-        const response = await fetch(DB_URL, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(accounts)
-        });
-        if (!response.ok) throw new Error('PUT HTTP ' + response.status);
+        const dataStr = await kvGet(`nb_user_${username}`);
+        if (!dataStr) return false;
         
-        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        const userData = JSON.parse(dataStr);
+        if (pointsDelta !== null) {
+            userData.points = (userData.points || 0) + pointsDelta;
+        }
+        if (avatar !== null) {
+            userData.avatar = avatar;
+        }
+        if (avatarType !== null) {
+            userData.avatarType = avatarType;
+        }
+        
+        await kvSet(`nb_user_${username}`, JSON.stringify(userData));
+        
+        // Update local cache
+        const cached = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+        cached[username] = userData;
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(cached));
+        
         return true;
     } catch (e) {
-        console.error('[NeonBeat DB] Error pushing remote accounts:', e);
+        console.error('[NeonBeat DB] Error updating remote user:', e);
         return false;
     }
 }
