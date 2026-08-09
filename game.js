@@ -9756,15 +9756,98 @@ function calculatePoints(rank, totalNotes) {
     }
 }
 
+// ===== REMOTE DATABASE SYNC SYSTEM (KeyValue API Integration) =====
+const ACCOUNTS_KV_KEY = 'neonbeat_accounts';
+const KV_APP_KEY = 'if0zmh0e';
+
+async function fetchRemoteAccounts() {
+    try {
+        const response = await fetch(
+            `https://keyvalue.immanuel.co/api/KeyVal/GetValue/${KV_APP_KEY}/${ACCOUNTS_KV_KEY}`,
+            { cache: 'no-store' }
+        );
+        if (!response.ok) throw new Error('GetValue HTTP ' + response.status);
+        const text = await response.text();
+        
+        let payload = text.trim();
+        const xmlMatch = payload.match(/<string[^>]*>([\s\S]*?)<\/string>/i);
+        if (xmlMatch) payload = xmlMatch[1].trim();
+        
+        payload = payload
+            .replace(/&quot;/g, '"')
+            .replace(/&#39;/g, "'")
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&amp;/g, '&');
+
+        if (!payload || payload === 'null' || payload === 'EMPTY' || payload === '[]') return {};
+        
+        if ((payload.startsWith('"') && payload.endsWith('"')) || (payload.startsWith("'") && payload.endsWith("'"))) {
+            payload = payload.slice(1, -1);
+        }
+        
+        // URL safe base64 decode
+        let base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        while (base64.length % 4) {
+            base64 += '=';
+        }
+        const decodedStr = decodeURIComponent(escape(atob(base64)));
+        const accounts = JSON.parse(decodedStr);
+        
+        // Cache in localstorage as fallback
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        return accounts;
+    } catch (e) {
+        console.error('[NeonBeat DB] Error fetching remote accounts:', e);
+        return JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+    }
+}
+
+async function pushRemoteAccounts(accounts) {
+    try {
+        const jsonStr = JSON.stringify(accounts);
+        const base64 = btoa(unescape(encodeURIComponent(jsonStr)));
+        const payload = base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+        const encoded = encodeURIComponent(payload);
+        
+        const response = await fetch(
+            `https://keyvalue.immanuel.co/api/KeyVal/UpdateValue/${KV_APP_KEY}/${ACCOUNTS_KV_KEY}/${encoded}`,
+            { method: 'POST' }
+        );
+        if (!response.ok) throw new Error('UpdateValue HTTP ' + response.status);
+        
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        return true;
+    } catch (e) {
+        console.error('[NeonBeat DB] Error pushing remote accounts:', e);
+        return false;
+    }
+}
+
 function addPlayerPoints(pts) {
     const currentUser = localStorage.getItem('neonbeat-current-user');
     let newPoints = 0;
+    
     if (currentUser) {
-        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
-        if (accounts[currentUser]) {
-            accounts[currentUser].points = (accounts[currentUser].points || 0) + pts;
-            newPoints = accounts[currentUser].points;
-            localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        // 1. Sync remote points in background
+        fetchRemoteAccounts().then(accounts => {
+            if (accounts[currentUser]) {
+                accounts[currentUser].points = (accounts[currentUser].points || 0) + pts;
+                newPoints = accounts[currentUser].points;
+                pushRemoteAccounts(accounts).then(() => {
+                    refreshProfileUI();
+                });
+            }
+        }).catch(err => {
+            console.error('Failed to sync remote points:', err);
+        });
+
+        // 2. Instant local update
+        const localAccounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+        if (localAccounts[currentUser]) {
+            localAccounts[currentUser].points = (localAccounts[currentUser].points || 0) + pts;
+            newPoints = localAccounts[currentUser].points;
+            localStorage.setItem('neonbeat-accounts', JSON.stringify(localAccounts));
         }
     } else {
         // Guest mode
@@ -9774,9 +9857,7 @@ function addPlayerPoints(pts) {
         localStorage.setItem('neonbeat-guest-points', guestPts);
     }
     
-    // Refresh main menu profile UI immediately
     refreshProfileUI();
-    
     return { earned: pts, total: newPoints };
 }
 
@@ -9795,7 +9876,7 @@ function updateModalAccountView() {
         const loggedUserTier = document.getElementById('logged-user-tier');
         const loggedUserPoints = document.getElementById('logged-user-points');
 
-        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
         const userAcc = accounts[currentUser] || { points: 0 };
         
         if (loggedUsername) loggedUsername.innerText = currentUser;
@@ -9823,7 +9904,19 @@ function refreshLeaderboardUI() {
     const mainMenuList = document.getElementById('main-menu-leaderboard-list');
     if (!modalList && !pageList && !mainMenuList) return;
 
-    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+    // Render instantly using cached local storage
+    const cachedAccounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+    renderPlayersList(cachedAccounts, modalList, pageList, mainMenuList);
+
+    // Fetch remote accounts and update UI asynchronously
+    fetchRemoteAccounts().then(freshAccounts => {
+        renderPlayersList(freshAccounts, modalList, pageList, mainMenuList);
+    }).catch(err => {
+        console.error('[NeonBeat DB] Async leaderboard update failed:', err);
+    });
+}
+
+function renderPlayersList(accounts, modalList, pageList, mainMenuList) {
     const players = Object.entries(accounts).map(([username, data]) => ({
         username,
         points: data.points || 0,
@@ -9995,15 +10088,17 @@ function refreshProfileUI() {
     let avatar = '🎮';
     let avatarType = 'emoji';
     let points = 0;
+    let isGuest = true;
 
     if (currentUser) {
-        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
         const userAcc = accounts[currentUser];
         if (userAcc) {
             name = currentUser; // Nickname is fixed to username
             avatar = userAcc.avatar || '🎮';
             avatarType = userAcc.avatarType || 'emoji';
             points = userAcc.points || 0;
+            isGuest = false;
         } else {
             const guestProfile = loadProfile();
             name = guestProfile.name;
@@ -10024,10 +10119,18 @@ function refreshProfileUI() {
     const fallbackEl = document.getElementById('menu-profile-pic-fallback');
     const tierEl = document.getElementById('menu-profile-tier');
     const pointsEl = document.getElementById('menu-profile-points');
+    const hintEl = document.querySelector('.profile-edit-hint');
 
-    if (nameEl) nameEl.innerText = name;
+    if (nameEl) {
+        nameEl.innerHTML = name + (isGuest 
+            ? ' <span style="font-size: 0.7rem; background: rgba(239, 68, 68, 0.2); color: #f87171; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 5px; vertical-align: middle;">INVITADO</span>' 
+            : ' <span style="font-size: 0.7rem; background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 4px; font-weight: bold; margin-left: 5px; vertical-align: middle;">REGISTRADO</span>');
+    }
     if (tierEl) tierEl.innerText = getTierName(points);
     if (pointsEl) pointsEl.innerText = 'Puntos: ' + points;
+    if (hintEl) {
+        hintEl.innerText = isGuest ? 'Click para registrarte y subir al Leaderboard' : 'Click para editar perfil';
+    }
 
     if (avatarType === 'image') {
         if (picEl) {
@@ -10896,53 +10999,89 @@ function initAccountSystem() {
     tabBtnRegister.onclick = () => window.switchAccountTab('register');
 
     if (btnLogin) {
-        btnLogin.onclick = () => {
+        btnLogin.onclick = async () => {
             const username = loginUser.value.trim();
             const password = loginPass.value;
 
             if (!username || !password) return;
 
-            const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
-            const acc = accounts[username];
+            btnLogin.disabled = true;
+            const origText = btnLogin.innerText;
+            btnLogin.innerText = 'Verificando...';
 
-            if (acc && acc.password === password) {
-                localStorage.setItem('neonbeat-current-user', username);
-                loginUser.value = '';
-                loginPass.value = '';
-                if (loginError) loginError.classList.add('hidden');
-                refreshProfileUI();
-            } else {
-                if (loginError) loginError.classList.remove('hidden');
+            try {
+                const accounts = await fetchRemoteAccounts();
+                const acc = accounts[username];
+
+                if (acc && acc.password === password) {
+                    localStorage.setItem('neonbeat-current-user', username);
+                    loginUser.value = '';
+                    loginPass.value = '';
+                    if (loginError) loginError.classList.add('hidden');
+                    refreshProfileUI();
+                } else {
+                    if (loginError) {
+                        loginError.innerText = 'Usuario o contraseña incorrectos';
+                        loginError.classList.remove('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error('Login failed:', err);
+                if (loginError) {
+                    loginError.innerText = 'Error de conexión';
+                    loginError.classList.remove('hidden');
+                }
+            } finally {
+                btnLogin.disabled = false;
+                btnLogin.innerText = origText;
             }
         };
     }
 
     if (btnRegister) {
-        btnRegister.onclick = () => {
+        btnRegister.onclick = async () => {
             const username = registerUser.value.trim();
             const password = registerPass.value;
 
             if (!username || !password) return;
 
-            const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
-            
-            if (accounts[username]) {
-                if (registerError) registerError.classList.remove('hidden');
-            } else {
-                // Register account
-                accounts[username] = {
-                    password: password,
-                    points: 0,
-                    avatar: '🎮',
-                    avatarType: 'emoji'
-                };
-                localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
-                localStorage.setItem('neonbeat-current-user', username);
+            btnRegister.disabled = true;
+            const origText = btnRegister.innerText;
+            btnRegister.innerText = 'Registrando...';
+
+            try {
+                const accounts = await fetchRemoteAccounts();
                 
-                registerUser.value = '';
-                registerPass.value = '';
-                if (registerError) registerError.classList.add('hidden');
-                refreshProfileUI();
+                if (accounts[username]) {
+                    if (registerError) {
+                        registerError.innerText = 'El nombre de usuario ya está registrado';
+                        registerError.classList.remove('hidden');
+                    }
+                } else {
+                    // Register account
+                    accounts[username] = {
+                        password: password,
+                        points: 0,
+                        avatar: '🎮',
+                        avatarType: 'emoji'
+                    };
+                    await pushRemoteAccounts(accounts);
+                    localStorage.setItem('neonbeat-current-user', username);
+                    
+                    registerUser.value = '';
+                    registerPass.value = '';
+                    if (registerError) registerError.classList.add('hidden');
+                    refreshProfileUI();
+                }
+            } catch (err) {
+                console.error('Registration failed:', err);
+                if (registerError) {
+                    registerError.innerText = 'Error de conexión';
+                    registerError.classList.remove('hidden');
+                }
+            } finally {
+                btnRegister.disabled = false;
+                btnRegister.innerText = origText;
             }
         };
     }
