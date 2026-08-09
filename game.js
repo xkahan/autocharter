@@ -3998,7 +3998,12 @@ function showResults() {
     if (gameContainer) gameContainer.classList.remove('lost-in-snow-active');
     document.body.classList.remove('lost-in-snow-song');
 
-    const totalNotes = window.audioMap ? window.audioMap.length : 0;
+    const totalNotes = window.audioMap
+        ? window.audioMap.filter(n => 
+            !(n.isDoubleClone && !activeModes.double) && 
+            !(n.isUntouchable && !activeModes.untouchable)
+          ).length
+        : 0;
 
     // Accuracy based on judged notes
     const totalJudged = countPerfect + countGreat + countOk + countMiss;
@@ -9730,8 +9735,8 @@ function getTierName(points) {
 function calculatePoints(rank, totalNotes) {
     if (totalNotes < 1500) {
         const basePoints = {
-            'SS': 100,
-            'S++': 200,
+            'SS': 200,
+            'S++': 150,
             'S+': 100,
             'S': 50,
             'A': 10,
