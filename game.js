@@ -4088,11 +4088,19 @@ function showResults() {
         `;
     } else {
         const basePoints = calculatePoints(rank, totalNotes);
-        earnedPoints = Math.round(basePoints * mult);
+        const completionRatio = totalNotes > 0 ? Math.min(1.0, totalJudged / totalNotes) : 0;
+        earnedPoints = Math.round(basePoints * mult * completionRatio);
+        
+        const isEarlyLoss = completionRatio < 0.98; // Allow small margin for normal song ends
         pointsDisplayHTML = `
             <strong style="font-size: 1.35rem; color: ${earnedPoints >= 0 ? '#10b981' : '#ef4444'};">
                 ${earnedPoints >= 0 ? '+' : ''}${earnedPoints} PTS
             </strong>
+            ${isEarlyLoss ? `
+            <span style="font-size: 0.75rem; color: #f59e0b; display: block; margin-top: 2px;">
+                Partida inconclusa (${Math.round(completionRatio * 100)}% jugado)
+            </span>
+            ` : ''}
             ${mult !== 1.0 ? `
             <span style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-top: 2px;">
                 Multiplicador: x${mult.toFixed(2)}
