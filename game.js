@@ -2580,6 +2580,9 @@ function drawGame(timestamp, forceRedraw = false) {
                     // Tap note local miss & render
                     if (!window.isPaused && !note.scored && timeUntilHit < -0.3) {
                         note.scored = true;
+                        if (note.isUntouchable) {
+                            continue;
+                        }
                         if (isLaserActiveOnLane(note.col)) {
                             updateHealth(-2.0);
                         } else {
@@ -2706,6 +2709,9 @@ function drawGame(timestamp, forceRedraw = false) {
                     // Tap note opponent miss & render
                     if (timeUntilHit < -0.35) {
                         note.opponentScored = true;
+                        if (note.isUntouchable) {
+                            continue;
+                        }
                         if (isLocalCoop) {
                             window.localMode.p2Combo = 0;
                             window.localMode.p2CountMiss++;
