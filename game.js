@@ -9860,14 +9860,14 @@ function addPlayerPoints(pts) {
         // 2. Instant local update
         const localAccounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
         if (localAccounts[currentUser]) {
-            localAccounts[currentUser].points = (localAccounts[currentUser].points || 0) + pts;
+            localAccounts[currentUser].points = Math.max(0, (localAccounts[currentUser].points || 0) + pts);
             newPoints = localAccounts[currentUser].points;
             localStorage.setItem('neonbeat-accounts', JSON.stringify(localAccounts));
         }
     } else {
         // Guest mode
         let guestPts = parseInt(localStorage.getItem('neonbeat-guest-points')) || 0;
-        guestPts += pts;
+        guestPts = Math.max(0, guestPts + pts);
         newPoints = guestPts;
         localStorage.setItem('neonbeat-guest-points', guestPts);
     }

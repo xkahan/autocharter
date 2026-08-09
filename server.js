@@ -182,9 +182,9 @@ const server = http.createServer(async (req, res) => {
 
             const db = loadDB();
             if (db[username]) {
-                db[username].points = (db[username].points || 0) + points;
+                db[username].points = Math.max(0, (db[username].points || 0) + points);
                 saveDB(db);
-                console.log(`[NeonBeat] Se sumaron ${points} puntos a ${username}. Total: ${db[username].points}`);
+                console.log(`[NeonBeat] Puntos actualizados para ${username}. Total: ${db[username].points}`);
                 return sendJSON(res, 200, { success: true, points: db[username].points });
             } else {
                 return sendJSON(res, 404, { error: 'Usuario no encontrado' });
