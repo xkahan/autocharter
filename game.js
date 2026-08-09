@@ -9871,18 +9871,21 @@ function addPlayerPoints(pts) {
     if (currentUser) {
         // 1. Sync remote points in background
         updateRemoteUser(currentUser, pts, null, null).then(() => {
-            refreshProfileUI();
+            fetchRemoteAccounts().then(() => {
+                refreshProfileUI();
+            });
         }).catch(err => {
             console.error('Failed to sync remote points:', err);
         });
 
         // 2. Instant local update
         const localAccounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
-        if (localAccounts[currentUser]) {
-            localAccounts[currentUser].points = Math.max(0, (localAccounts[currentUser].points || 0) + pts);
-            newPoints = localAccounts[currentUser].points;
-            localStorage.setItem('neonbeat-accounts', JSON.stringify(localAccounts));
+        if (!localAccounts[currentUser]) {
+            localAccounts[currentUser] = { points: 0, avatar: '🎮', avatarType: 'emoji' };
         }
+        localAccounts[currentUser].points = Math.max(0, (localAccounts[currentUser].points || 0) + pts);
+        newPoints = localAccounts[currentUser].points;
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(localAccounts));
     } else {
         // Guest mode
         let guestPts = parseInt(localStorage.getItem('neonbeat-guest-points')) || 0;
@@ -10093,12 +10096,13 @@ function saveProfile(name, avatar, avatarType) {
     const currentUser = localStorage.getItem('neonbeat-current-user');
     if (currentUser) {
         // Save to account
-        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}');
-        if (accounts[currentUser]) {
-            accounts[currentUser].avatar = avatar;
-            accounts[currentUser].avatarType = avatarType;
-            localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+        const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+        if (!accounts[currentUser]) {
+            accounts[currentUser] = { points: 0, avatar: '🎮', avatarType: 'emoji' };
         }
+        accounts[currentUser].avatar = avatar;
+        accounts[currentUser].avatarType = avatarType;
+        localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
         // Async background remote avatar update
         updateRemoteUser(currentUser, null, avatar, avatarType).then(() => {
             refreshProfileUI();
@@ -10800,6 +10804,13 @@ function initNewMenuSystem() {
 
     // Make sure we show the main menu screen by default and hide app container initially
     window.showScreen('main-menu');
+
+    // Sync latest accounts database from the server in the background
+    fetchRemoteAccounts().then(() => {
+        refreshProfileUI();
+    }).catch(err => {
+        console.warn('[NeonBeat] Startup profile sync failed:', err);
+    });
 }
 
 // ===== MOBILE TOUCH CONTROLS & TRANSPARENCY SYSTEM =====
@@ -11052,6 +11063,16 @@ function initAccountSystem() {
 
                 if (res.success) {
                     localStorage.setItem('neonbeat-current-user', username);
+                    
+                    // Save user profile to local accounts cache
+                    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+                    accounts[username] = {
+                        points: res.userData.points || 0,
+                        avatar: res.userData.avatar || '🎮',
+                        avatarType: res.userData.avatarType || 'emoji'
+                    };
+                    localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+
                     loginUser.value = '';
                     loginPass.value = '';
                     if (loginError) loginError.classList.add('hidden');
@@ -11096,6 +11117,16 @@ function initAccountSystem() {
                     }
                 } else {
                     localStorage.setItem('neonbeat-current-user', username);
+
+                    // Initialize user profile in local accounts cache
+                    const accounts = JSON.parse(localStorage.getItem('neonbeat-accounts') || '{}') || {};
+                    accounts[username] = {
+                        points: 0,
+                        avatar: '🎮',
+                        avatarType: 'emoji'
+                    };
+                    localStorage.setItem('neonbeat-accounts', JSON.stringify(accounts));
+
                     registerUser.value = '';
                     registerPass.value = '';
                     if (registerError) registerError.classList.add('hidden');
