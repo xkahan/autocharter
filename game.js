@@ -4062,6 +4062,9 @@ function showResults() {
     let earnedPoints = 0;
     let pointsDisplayHTML = '';
 
+    const songDuration = window.audioBuffer ? window.audioBuffer.duration : 0;
+    const isQualifyingSong = totalNotes > 750 && songDuration > 50;
+
     if (usedAutoplay) {
         earnedPoints = 0;
         pointsDisplayHTML = `
@@ -4090,6 +4093,16 @@ function showResults() {
             </strong>
             <span style="font-size: 0.75rem; color: #9ca3af; display: block; margin-top: 2px;">
                 Los modos Heaven no otorgan puntos
+            </span>
+        `;
+    } else if (!isQualifyingSong) {
+        earnedPoints = 0;
+        pointsDisplayHTML = `
+            <strong style="font-size: 1.1rem; color: #fb923c; display: block; margin: 4px 0;">
+                0 PTS (CORTA / BAJA DENSIDAD)
+            </strong>
+            <span style="font-size: 0.72rem; color: #f87171; display: block; margin-top: 2px;">
+                Requiere >50s y >750 notas. Actual: ${Math.round(songDuration)}s, ${totalNotes} notas
             </span>
         `;
     } else {
@@ -9737,12 +9750,12 @@ function loadProfile() {
 
 // --- Rankings & Tiers System ---
 function getTierName(points) {
-    if (points >= 50000) return 'LUNARIUM';
-    if (points >= 25000) return 'SOLARIUM';
-    if (points >= 10000) return 'Emerald';
-    if (points >= 8000) return 'Diamond';
-    if (points >= 7000) return 'Steel';
-    if (points >= 4000) return 'Bronze';
+    if (points >= 15000) return 'LUNARIUM';
+    if (points >= 8000) return 'SOLARIUM';
+    if (points >= 6000) return 'Emerald';
+    if (points >= 4500) return 'Diamond';
+    if (points >= 1200) return 'Steel';
+    if (points >= 500) return 'Bronze';
     return 'Dirt';
 }
 
@@ -9910,12 +9923,12 @@ function updateModalAccountView() {
 }
 
 function getTierColor(points) {
-    if (points >= 50000) return '#c084fc'; // LUNARIUM - Purple/light violet
-    if (points >= 25000) return '#f59e0b'; // SOLARIUM - Amber/Orange
-    if (points >= 10000) return '#10b981'; // Emerald - Emerald Green
-    if (points >= 8000) return '#38bdf8'; // Diamond - Light Blue
-    if (points >= 7000) return '#94a3b8'; // Steel - Slate/Grey
-    if (points >= 4000) return '#b45309'; // Bronze - Brown/Bronze
+    if (points >= 15000) return '#c084fc'; // LUNARIUM - Purple/light violet
+    if (points >= 8000) return '#f59e0b'; // SOLARIUM - Amber/Orange
+    if (points >= 6000) return '#10b981'; // Emerald - Emerald Green
+    if (points >= 4500) return '#38bdf8'; // Diamond - Light Blue
+    if (points >= 1200) return '#94a3b8'; // Steel - Slate/Grey
+    if (points >= 500) return '#b45309'; // Bronze - Brown/Bronze
     return '#6b7280'; // Dirt - Grey
 }
 
