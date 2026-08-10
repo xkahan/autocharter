@@ -3925,29 +3925,151 @@ body.mobile-version .menu-window-wrapper {
     border-radius: 18px;
 }
 
+body.mobile-version .main-menu-logo {
+    max-height: 50px !important;
+    width: auto !important;
+    margin: 0 auto 10px auto !important;
+    display: block !important;
+}
+
 body.mobile-version .main-menu-content {
-    flex-direction: column !important;
-    height: calc(100% - 6rem) !important;
-    gap: 15px !important;
-    overflow-y: auto;
+    display: grid !important;
+    grid-template-columns: 1.25fr 1fr !important;
+    grid-template-rows: repeat(5, auto) !important;
+    gap: 0px !important;
+    width: 100% !important;
+    height: auto !important;
+    margin-top: 10px !important;
+    overflow-y: visible !important;
 }
 
 body.mobile-version .main-menu-left {
-    width: 100% !important;
-    align-items: center !important;
+    display: contents !important;
 }
 
+body.mobile-version .main-menu-right-col {
+    display: contents !important;
+}
+
+/* Arrange the buttons in column 1 (left) */
+body.mobile-version .main-menu-left button:nth-child(1) {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+}
+body.mobile-version .main-menu-left button:nth-child(2) {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+}
+body.mobile-version .main-menu-left button:nth-child(3) {
+    grid-column: 1 !important;
+    grid-row: 3 !important;
+}
+body.mobile-version .main-menu-left button:nth-child(4) {
+    grid-column: 1 !important;
+    grid-row: 4 !important;
+}
+body.mobile-version .main-menu-right-col button.menu-nav-btn {
+    grid-column: 1 !important;
+    grid-row: 5 !important;
+}
+
+/* Common styling for mobile buttons */
 body.mobile-version .menu-nav-btn {
-    font-size: 1.6rem !important;
-    padding: 0.6rem 1rem !important;
+    font-size: 1.15rem !important;
+    padding: 10px 8px !important;
     width: 100% !important;
+    text-align: center !important;
+    font-family: Georgia, serif !important;
+    border-radius: 0 !important;
+    border: 3px solid #000000 !important;
+    background: #282828 !important;
+    color: #ffffff !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+    font-weight: bold !important;
+    margin-top: -3px !important; /* Overlap borders vertically */
+    transform: none !important;
+    transition: none !important;
+}
+
+body.mobile-version .menu-nav-btn:hover {
+    background: #444444 !important;
+    color: #ffffff !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+
+/* Profile Card (Usuario) on the right side */
+body.mobile-version #menu-profile-card {
+    grid-column: 2 !important;
+    grid-row: 3 / span 3 !important; /* Position next to the bottom buttons */
+    align-self: end !important;
+    margin-left: 15px !important;
+    border-radius: 0 !important;
+    border: 3px solid #000000 !important;
+    background: #282828 !important;
+    color: #ffffff !important;
+    font-family: Georgia, serif !important;
+    padding: 12px !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    box-shadow: none !important;
+    height: calc(100% - 3px) !important; /* Match vertical height of the stacked buttons next to it */
+    box-sizing: border-box !important;
+    transform: none !important;
+}
+
+body.mobile-version #menu-profile-card:hover {
+    border-color: #000000 !important;
+    transform: none !important;
+}
+
+body.mobile-version #menu-profile-card * {
+    font-family: Georgia, serif !important;
+    color: #ffffff !important;
+}
+
+body.mobile-version .profile-pic-container {
+    width: 55px !important;
+    height: 55px !important;
+    border: 2px solid #ffffff !important;
+    box-shadow: none !important;
+    margin-bottom: 5px !important;
+}
+
+body.mobile-version .profile-info {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
     text-align: center !important;
 }
 
-body.mobile-version .main-menu-right {
-    width: 100% !important;
-    max-width: 320px !important;
-    margin: 0 auto !important;
+body.mobile-version .profile-name {
+    font-size: 1.1rem !important;
+    font-weight: bold !important;
+}
+
+body.mobile-version .profile-tier-container {
+    align-items: center !important;
+}
+
+body.mobile-version #menu-profile-tier {
+    color: #ffffff !important;
+    font-size: 0.8rem !important;
+}
+
+body.mobile-version #menu-profile-points {
+    color: rgba(255, 255, 255, 0.7) !important;
+    font-size: 0.75rem !important;
+}
+
+body.mobile-version .profile-edit-hint {
+    font-size: 0.65rem !important;
+    color: rgba(255, 255, 255, 0.5) !important;
 }
 
 body.mobile-version .settings-window {
