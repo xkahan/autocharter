@@ -3926,17 +3926,17 @@ body.mobile-version .menu-window-wrapper {
 }
 
 body.mobile-version .main-menu-logo {
-    max-height: 50px !important;
+    max-height: 55px !important;
     width: auto !important;
-    margin: 0 auto 10px auto !important;
+    margin: 0 auto 15px auto !important;
     display: block !important;
 }
 
 body.mobile-version .main-menu-content {
     display: grid !important;
-    grid-template-columns: 1.25fr 1fr !important;
+    grid-template-columns: 1.2fr 1fr !important;
     grid-template-rows: repeat(5, auto) !important;
-    gap: 0px !important;
+    gap: 10px !important;
     width: 100% !important;
     height: auto !important;
     margin-top: 10px !important;
@@ -3973,72 +3973,73 @@ body.mobile-version .main-menu-right-col button.menu-nav-btn {
     grid-row: 5 !important;
 }
 
-/* Common styling for mobile buttons */
+/* Common styling for mobile buttons (restored to original Auto Charter style) */
 body.mobile-version .menu-nav-btn {
-    font-size: 1.15rem !important;
-    padding: 10px 8px !important;
+    font-size: 1.25rem !important;
+    padding: 10px 15px !important;
     width: 100% !important;
-    text-align: center !important;
-    font-family: Georgia, serif !important;
-    border-radius: 0 !important;
-    border: 3px solid #000000 !important;
-    background: #282828 !important;
-    color: #ffffff !important;
+    text-align: left !important;
+    font-family: 'Outfit', sans-serif !important;
+    border-radius: 12px !important;
+    border: 2px solid color-mix(in srgb, var(--primary, #6366f1) 40%, transparent) !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    color: var(--text-main) !important;
     margin: 0 !important;
     box-shadow: none !important;
     text-shadow: none !important;
-    font-weight: bold !important;
-    margin-top: -3px !important; /* Overlap borders vertically */
+    font-weight: 900 !important;
     transform: none !important;
-    transition: none !important;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
 }
 
 body.mobile-version .menu-nav-btn:hover {
-    background: #444444 !important;
-    color: #ffffff !important;
-    transform: none !important;
-    box-shadow: none !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+    border-color: var(--primary) !important;
+    color: var(--primary) !important;
+    transform: translateX(4px) !important;
+    box-shadow: 0 0 12px color-mix(in srgb, var(--primary) 50%, transparent) !important;
 }
 
-/* Profile Card (Usuario) on the right side */
+/* Profile Card (Usuario) on the right side (restored to original Auto Charter style) */
 body.mobile-version #menu-profile-card {
     grid-column: 2 !important;
-    grid-row: 3 / span 3 !important; /* Position next to the bottom buttons */
-    align-self: end !important;
+    grid-row: 2 / span 3 !important;
+    align-self: center !important;
     margin-left: 15px !important;
-    border-radius: 0 !important;
-    border: 3px solid #000000 !important;
-    background: #282828 !important;
-    color: #ffffff !important;
-    font-family: Georgia, serif !important;
-    padding: 12px !important;
+    border-radius: 20px !important;
+    border: 1px solid rgba(255, 255, 255, 0.05) !important;
+    background: rgba(255, 255, 255, 0.03) !important;
+    color: var(--text-main) !important;
+    font-family: 'Outfit', sans-serif !important;
+    padding: 15px !important;
     display: flex !important;
     flex-direction: column !important;
     align-items: center !important;
     justify-content: center !important;
     text-align: center !important;
     box-shadow: none !important;
-    height: calc(100% - 3px) !important; /* Match vertical height of the stacked buttons next to it */
+    height: auto !important;
     box-sizing: border-box !important;
-    transform: none !important;
+    transition: transform 0.3s ease, border-color 0.3s ease;
+    cursor: pointer !important;
 }
 
 body.mobile-version #menu-profile-card:hover {
-    border-color: #000000 !important;
-    transform: none !important;
+    border-color: var(--primary) !important;
+    transform: scale(1.02) !important;
 }
 
 body.mobile-version #menu-profile-card * {
-    font-family: Georgia, serif !important;
-    color: #ffffff !important;
+    font-family: 'Outfit', sans-serif !important;
+    color: var(--text-main) !important;
 }
 
 body.mobile-version .profile-pic-container {
-    width: 55px !important;
-    height: 55px !important;
-    border: 2px solid #ffffff !important;
-    box-shadow: none !important;
-    margin-bottom: 5px !important;
+    width: 65px !important;
+    height: 65px !important;
+    border: 3px solid var(--primary) !important;
+    box-shadow: 0 0 12px var(--primary) !important;
+    margin-bottom: 8px !important;
 }
 
 body.mobile-version .profile-info {
@@ -4049,7 +4050,7 @@ body.mobile-version .profile-info {
 }
 
 body.mobile-version .profile-name {
-    font-size: 1.1rem !important;
+    font-size: 1.15rem !important;
     font-weight: bold !important;
 }
 
@@ -4058,18 +4059,18 @@ body.mobile-version .profile-tier-container {
 }
 
 body.mobile-version #menu-profile-tier {
-    color: #ffffff !important;
-    font-size: 0.8rem !important;
+    color: var(--primary) !important;
+    font-size: 0.85rem !important;
 }
 
 body.mobile-version #menu-profile-points {
-    color: rgba(255, 255, 255, 0.7) !important;
+    color: var(--text-muted) !important;
     font-size: 0.75rem !important;
 }
 
 body.mobile-version .profile-edit-hint {
     font-size: 0.65rem !important;
-    color: rgba(255, 255, 255, 0.5) !important;
+    color: var(--text-muted) !important;
 }
 
 body.mobile-version .settings-window {
