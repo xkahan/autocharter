@@ -1336,6 +1336,8 @@ function resizeCanvas(options = {}) {
     const isOnline = window.onlineMode && window.onlineMode.active;
     const isLocalCoop = window.localMode && window.localMode.active;
     const isTwoPlayer = isOnline || isLocalCoop;
+    const isMobile = document.body.classList.contains('mobile-version');
+    const showTwoLanes = isTwoPlayer && !isMobile;
 
     const p1Window = document.getElementById('game-window-p1');
     const p2Window = document.getElementById('game-window-p2');
@@ -1347,7 +1349,7 @@ function resizeCanvas(options = {}) {
         p1Window.style.transition = 'none';
         p2Window.style.transition = 'none';
 
-        if (isTwoPlayer) {
+        if (showTwoLanes) {
             p2Window.classList.remove('hidden');
             if (isLocalCoop) {
                 p1Window.style.width = '440px';
@@ -1371,7 +1373,7 @@ function resizeCanvas(options = {}) {
         localStartX = p1Rect.left - originLeft;
         colWidth = p1Rect.width / columns;
 
-        if (isTwoPlayer) {
+        if (showTwoLanes) {
             const p2Rect = p2Window.getBoundingClientRect();
             window._oppTrackWidth = p2Rect.width;
             window._oppStartX = p2Rect.left - originLeft;
@@ -1532,7 +1534,7 @@ window.handleOpponentDeath = function () {
     // Muestra "¡GANASTE!" gigante con el feedback perfecto (Neon e Indigo)
     showFeedback('¡GANASTE!', 'feedback-perfect');
 
-    if (window.onlineMode && window.onlineMode.active) {
+    if (window.onlineMode && window.onlineMode.active && !document.body.classList.contains('mobile-version')) {
         // Draw (Muerte) under opponent player's track
         ctx.save();
         ctx.font = '900 48px Outfit, sans-serif';
@@ -2151,6 +2153,8 @@ function drawGame(timestamp, forceRedraw = false) {
     const isOnline = window.onlineMode && window.onlineMode.active;
     const isLocalCoop = window.localMode && window.localMode.active;
     const isTwoPlayer = isOnline || isLocalCoop;
+    const isMobile = document.body.classList.contains('mobile-version');
+    const showTwoLanes = isTwoPlayer && !isMobile;
     const currentColWidth = colWidth;
 
     // Opponent track dimensions
@@ -2159,7 +2163,7 @@ function drawGame(timestamp, forceRedraw = false) {
     const oppNSize = window._oppNoteSize || noteSize;
 
     // Draw local lanes (left half)
-    if (isTwoPlayer) {
+    if (showTwoLanes) {
         // Local username label at top
         ctx.save();
         ctx.font = '900 18px Outfit, sans-serif';
@@ -2260,7 +2264,7 @@ function drawGame(timestamp, forceRedraw = false) {
     drawLasers(ctx);
 
     // Draw opponent track on the right side
-    if (isTwoPlayer) {
+    if (showTwoLanes) {
 
         // Opponent custom username label at top
         ctx.save();
@@ -2683,7 +2687,7 @@ function drawGame(timestamp, forceRedraw = false) {
                     }
 
                     // Render hold oponente
-                    if (timeUntilEnd !== null && timeUntilEnd > -0.6 && (timeUntilHit <= oppFallSec || note.opponentHoldStarted)) {
+                    if (!isMobile && timeUntilEnd !== null && timeUntilEnd > -0.6 && (timeUntilHit <= oppFallSec || note.opponentHoldStarted)) {
                         const x = oppStartX + note.col * oppColW + oppColW / 2;
                         let headY = timeToY(note.time, currentTime, oppFallSec);
                         let tailY = timeToY(note.endTime, currentTime, oppFallSec);
@@ -2722,7 +2726,7 @@ function drawGame(timestamp, forceRedraw = false) {
                             window.onlineMode.opponent.combo = 0;
                             if (window.updateOpponentHUD) window.updateOpponentHUD();
                         }
-                    } else if (timeUntilHit <= oppFallSec && timeUntilHit > -0.5) {
+                    } else if (!isMobile && timeUntilHit <= oppFallSec && timeUntilHit > -0.5) {
                         const x = oppStartX + note.col * oppColW + oppColW / 2;
                         let y = timeToY(note.time, currentTime, oppFallSec);
 
@@ -2795,6 +2799,8 @@ window.drawReadyState = function () {
     const isOnline = window.onlineMode && window.onlineMode.active;
     const isLocalCoop = window.localMode && window.localMode.active;
     const isTwoPlayer = isOnline || isLocalCoop;
+    const isMobile = document.body.classList.contains('mobile-version');
+    const showTwoLanes = isTwoPlayer && !isMobile;
     const currentColWidth = colWidth;
 
     // Track metrics
@@ -2803,7 +2809,7 @@ window.drawReadyState = function () {
     const oppNSize = window._oppNoteSize || noteSize;
 
     // Draw local lanes (left half)
-    if (isTwoPlayer) {
+    if (showTwoLanes) {
         // Local username label at top
         ctx.save();
         ctx.font = '900 18px Outfit, sans-serif';
@@ -2871,7 +2877,7 @@ window.drawReadyState = function () {
     }
 
     // Draw opponent track if online
-    if (isTwoPlayer) {
+    if (showTwoLanes) {
 
         // Opponent custom username label at top
         ctx.save();
