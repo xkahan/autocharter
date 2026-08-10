@@ -9688,6 +9688,14 @@ function changeActualScreen(screenName) {
     // Toggle expensive backdrop blurs while in-game for better FPS
     document.body.classList.toggle('playing-perf', screenName === 'game');
 
+    // Show/hide sidebar configuration buttons depending on active screen (only show on autocharting/gameplay)
+    const togglePanelBtn = document.getElementById('btn-toggle-panel');
+    const customWindowBtn = document.getElementById('btn-custom-window');
+    const themeMenuBtn = document.getElementById('btn-theme-menu');
+    if (togglePanelBtn) togglePanelBtn.classList.toggle('hidden', screenName !== 'game');
+    if (customWindowBtn) customWindowBtn.classList.toggle('hidden', screenName !== 'game');
+    if (themeMenuBtn) themeMenuBtn.classList.toggle('hidden', screenName !== 'game');
+
     if (screenName === 'main-menu') {
         // Stop gameplay but keep current song as menu BGM
         if (typeof endGameplayKeepMusic === 'function') {
